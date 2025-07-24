@@ -3,11 +3,12 @@
   "version": "0.1.0",
   "description": "Tile GNOME windows the Hyprland way.",
   "main": "src/extension.ts",
+  "type": "module",
   "scripts": {
     "build": "git clean -qxf ':/dist' ':/out' hyprtile.dist.tgz && tsc -p tsconfig.prod.json && rm -rf dist/types && tar -czf hyprtile.tgz -C dist .",
     "serve": "gnome-extensions install -f hyprtile.tgz",
     "serve:local": "gnome-extensions install -f hyprtile.tgz",
-    "serve:remote": "gnome-extensions install -f hyprtile.tgz",
+    "serve:remote": "scp hyprtile.tgz laptop:~/Downloads/hyprtile.tgz && ssh laptop 'gnome-extensions install -f ~/Downloads/hyprtile.tgz'",
     "check": "tsc --noEmit"
   },
   "repository": {
