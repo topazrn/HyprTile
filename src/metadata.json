@@ -1,7 +1,7 @@
 {
   "name": "HyprTile",
   "description": "Tile GNOME windows the Hyprland way.",
-  "uuid": "com.topazrn.hyprtile",
+  "uuid": "hyprtile@topazrn.com",
   "settings-schema": "org.gnome.shell.extensions.hyprtile",
   "shell-version": ["48"]
 }
