@@ -3,12 +3,12 @@ DOMAIN=topazrn.com
 
 .PHONY: all pack install clean
 
-all: dist/extension.js
+all: dist/*
 
 node_modules: package.json
 	bun install
 
-dist/extension.js dist/prefs.js: node_modules
+dist/*: node_modules
 	bunx tsc
 
 schemas/gschemas.compiled: src/schemas/org.gnome.shell.extensions.$(NAME).gschema.xml
@@ -28,3 +28,6 @@ install: $(NAME).zip
 
 clean:
 	@rm -rf dist node_modules $(NAME).zip
+
+serve:
+	MUTTER_DEBUG_DUMMY_MODE_SPECS=1920x1080 dbus-run-session -- gnome-shell --nested --wayland
