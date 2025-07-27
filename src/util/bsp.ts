@@ -184,7 +184,6 @@ export function findNodeFromWindowHandle(rootNode: BspNode, targetWindowHandle: 
     return null;
 }
 
-
 /**
  * Prints the structure of the BSP tree to the console, showing nodes and their relationships.
  * Performs a pre-order traversal.

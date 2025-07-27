@@ -28,7 +28,7 @@ export default class WindowManager {
             wm = new WindowManager(key);
             this.instances.set(key, wm);
         }
-        wm.push(display, newWindow);
+        wm.push(newWindow);
     }
 
     public static pop(display: Meta.Display, oldWindow: Meta.Window): void {
@@ -38,13 +38,14 @@ export default class WindowManager {
             logger.warn(`No WindowManager instance found for ${key}, cannot pop window.`);
             return;
         }
-        wm.pop(display, oldWindow);
+        wm.pop(oldWindow);
     }
 
     private key: string;
     private workspace: number;
     private monitor: number;
     private rootNode: BspNode | null;
+    private workArea: IGeometry;
     private logger: ConsoleLike;
 
     constructor(key: string) {
@@ -53,10 +54,12 @@ export default class WindowManager {
         this.workspace = workspace;
         this.monitor = monitor;
         this.rootNode = null;
+        this.workArea = this.getWorkArea();
         this.logger = Extension.lookupByUUID("hyprtile@topazrn.com")!.getLogger()
     }
 
-    private workArea(display: Meta.Display): IGeometry {
+    private getWorkArea(): IGeometry {
+        const display = Shell.Global.get().display
         const workspaceManager = display.get_workspace_manager();
         const workspace = workspaceManager.get_workspace_by_index(this.workspace);
         if (!workspace) {
@@ -66,9 +69,9 @@ export default class WindowManager {
         return workspace.get_work_area_for_monitor(this.monitor);
     }
 
-    private push(display: Meta.Display, newWindow: Meta.Window): void {
+    private push(newWindow: Meta.Window): void {
         if (!this.rootNode) {
-            const geometry = this.workArea(display);
+            const geometry = this.workArea;
             this.rootNode = createWindowNode(
                 newWindow,
                 geometry,
@@ -160,7 +163,7 @@ export default class WindowManager {
         }
     }
 
-    private pop(display: Meta.Display, oldWindow: Meta.Window): void {
+    private pop(oldWindow: Meta.Window): void {
         if (!this.rootNode) {
             this.logger.warn(`No root node exists for ${this.key}, cannot pop window.`);
             return;
@@ -183,11 +186,11 @@ export default class WindowManager {
         }
 
         const parent = node.parent;
-        let remainingChild: IWindowNode;
+        let remainingChild: BspNode;
         if (parent.leftChild === node) {
-            remainingChild = parent.rightChild as IWindowNode;
+            remainingChild = parent.rightChild;
         } else {
-            remainingChild = parent.leftChild as IWindowNode;
+            remainingChild = parent.leftChild;
         }
 
         const grandParent = parent.parent;
@@ -206,12 +209,49 @@ export default class WindowManager {
             remainingChild.parent = grandParent;
         }
         remainingChild.geometry = parent.geometry; // Update geometry to parent's geometry
-        remainingChild.windowHandle.move_resize_frame(
-            true,
-            remainingChild.geometry.x,
-            remainingChild.geometry.y,
-            remainingChild.geometry.width,
-            remainingChild.geometry.height
-        );
+
+        this.resizeChildren(remainingChild); // Resize the children of the remaining node
+    }
+
+    // Resize the descendants of the node recursively
+    // Assuming that the geometry of the node is already set correctly
+    // This is used to resize the windows after a pop operation
+    private resizeChildren(node: BspNode): void {
+        if (node.type === 'window') {
+            const { windowHandle, geometry } = node;
+            return windowHandle.move_resize_frame(true, geometry.x, geometry.y, geometry.width, geometry.height);
+        }
+        
+        if (node.splitDirection === 'vertical') {
+            node.leftChild.geometry = {
+                x: node.geometry.x,
+                y: node.geometry.y,
+                width: node.geometry.width * node.splitRatio,
+                height: node.geometry.height
+            };
+            node.rightChild.geometry = {
+                x: node.geometry.x + node.leftChild.geometry.width,
+                y: node.geometry.y,
+                width: node.geometry.width * (1 - node.splitRatio),
+                height: node.geometry.height
+            };
+        } else {
+            node.leftChild.geometry = {
+                x: node.geometry.x,
+                y: node.geometry.y,
+                width: node.geometry.width,
+                height: node.geometry.height * node.splitRatio
+            };
+            node.rightChild.geometry = {
+                x: node.geometry.x,
+                y: node.geometry.y + node.leftChild.geometry.height,
+                width: node.geometry.width,
+                height: node.geometry.height * (1 - node.splitRatio)
+            };
+        }
+        
+        // Resize both children too
+        this.resizeChildren(node.leftChild);
+        this.resizeChildren(node.rightChild);
     }
 }
