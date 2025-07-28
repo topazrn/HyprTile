@@ -134,7 +134,7 @@ export default class WindowManager {
 
         if (isHorizontal) {
             newGeometry.width = newGeometry.width * this.defaultSplitRatio;
-            oldGeometry.width = oldGeometry.width * this.defaultSplitRatio;
+            oldGeometry.width = oldGeometry.width - newGeometry.width;
             if (hover === 'left') {
                 oldGeometry.x = node.geometry.x + newGeometry.width;
             } else {
@@ -142,7 +142,7 @@ export default class WindowManager {
             }
         } else {
             newGeometry.height = newGeometry.height * this.defaultSplitRatio;
-            oldGeometry.height = oldGeometry.height * this.defaultSplitRatio;
+            oldGeometry.height = oldGeometry.height - newGeometry.height;
             if (hover === 'left') {
                 oldGeometry.y = node.geometry.y + newGeometry.height;
             } else {
@@ -270,7 +270,7 @@ export default class WindowManager {
             node.rightChild.geometry = {
                 x: node.geometry.x + node.leftChild.geometry.width,
                 y: node.geometry.y,
-                width: node.geometry.width * (1 - node.splitRatio),
+                width: node.geometry.width - node.leftChild.geometry.width,
                 height: node.geometry.height
             };
         } else {
@@ -284,7 +284,7 @@ export default class WindowManager {
                 x: node.geometry.x,
                 y: node.geometry.y + node.leftChild.geometry.height,
                 width: node.geometry.width,
-                height: node.geometry.height * (1 - node.splitRatio)
+                height: node.geometry.height - node.leftChild.geometry.height,
             };
         }
 
