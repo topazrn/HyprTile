@@ -6,10 +6,11 @@ import {
     createSplitNode,
     createWindowNode,
     findNodeFromWindowHandle,
-    findWindowAtCursor,
     IGeometry,
     ISplitNode,
     printBspTree,
+    isPointInGeometry,
+    IWindowNode,
 } from "../util/bsp.js";
 import { ConsoleLike } from "@girs/gnome-shell/extensions/extension";
 
@@ -93,9 +94,14 @@ export default class WindowManager {
             return;
         }
 
-        // Get mouse position to determine which node to add the new window to
-        const [pointerX, pointerY, _] = Shell.Global.get().get_pointer();
-        let node: BspNode | null = findWindowAtCursor(this.rootNode, pointerX, pointerY);
+        let [pointerX, pointerY] = Shell.Global.get().get_pointer();
+        pointerX = Math.max(pointerX, this.workArea.x);
+        pointerY = Math.max(pointerY, this.workArea.y);
+        pointerX = Math.min(pointerX, this.workArea.width - 1);
+        pointerY = Math.min(pointerY, this.workArea.height - 1);
+
+        let node = this.windowAtPointer(this.rootNode, pointerX, pointerY);
+        this.logger.log(`Pointer at (${pointerX}, ${pointerY})`);
         if (!node) return; // Already handled at the beginning of the function
 
         const isHorizontal = node.geometry.width > node.geometry.height; // Determine split direction based on geometry aspect ratio
@@ -103,8 +109,8 @@ export default class WindowManager {
         // right is right for vertical split, right is bottom for horizontal split
         // left is left for vertical split, left is top for horizontal split
         const hover = isHorizontal ?
-            (pointerX < node.geometry.x + node.geometry.width * 0.5 ? 'left' : 'right') :
-            (pointerY < node.geometry.y + node.geometry.height * 0.5 ? 'left' : 'right');
+            (pointerX < node.geometry.x + node.geometry.width * this.defaultSplitRatio ? 'left' : 'right') :
+            (pointerY < node.geometry.y + node.geometry.height * this.defaultSplitRatio ? 'left' : 'right');
 
         const oldGeometry: IGeometry = {
             x: node.geometry.x,
@@ -315,7 +321,7 @@ export default class WindowManager {
         this.logger.log("");
     }
 
-    adjustSplitRatio(node: BspNode, parent: ISplitNode, newGeometry: IGeometry): void {
+    private adjustSplitRatio(node: BspNode, parent: ISplitNode, newGeometry: IGeometry): void {
         const oldSplitRatio = parent.splitRatio;
         if (parent.splitDirection === 'vertical') {
             if (parent.leftChild === node) {
@@ -345,6 +351,42 @@ export default class WindowManager {
             }
         } else {
             this.resizeChildren(parent);
+        }
+    }
+    
+    private windowAtPointer(rootNode: BspNode, cursorX: number, cursorY: number): IWindowNode | null {
+        // If the cursor is not within the root node's geometry, no window can be found
+        if (!isPointInGeometry(cursorX, cursorY, rootNode.geometry)) {
+            return null;
+        }
+    
+        if (rootNode.type === 'window') {
+            // If it's a window node, and the cursor is within its geometry, return it
+            return rootNode;
+        } else {
+            // If it's a split node, determine which child the cursor is in and recurse
+            const splitNode = rootNode; // Cast for type safety
+    
+            const { x, y, width, height } = splitNode.geometry;
+            const { splitDirection, splitRatio, leftChild, rightChild } = splitNode;
+    
+            if (splitDirection === 'vertical') {
+                // Vertical split: left and right children
+                const splitX = x + width * splitRatio;
+                if (cursorX < splitX) {
+                    return this.windowAtPointer(leftChild, cursorX, cursorY);
+                } else {
+                    return this.windowAtPointer(rightChild, cursorX, cursorY);
+                }
+            } else {
+                // Horizontal split: top and bottom children
+                const splitY = y + height * splitRatio;
+                if (cursorY < splitY) {
+                    return this.windowAtPointer(leftChild, cursorX, cursorY);
+                } else {
+                    return this.windowAtPointer(rightChild, cursorX, cursorY);
+                }
+            }
         }
     }
 }

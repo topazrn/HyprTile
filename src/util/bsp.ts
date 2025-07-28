@@ -101,52 +101,9 @@ export function createSplitNode(
 /**
  * Determines if a given point (cursorX, cursorY) is within the bounds of a geometry.
  */
-function isPointInGeometry(x: number, y: number, geometry: IGeometry): boolean {
+export function isPointInGeometry(x: number, y: number, geometry: IGeometry): boolean {
     return x >= geometry.x && x < (geometry.x + geometry.width) &&
         y >= geometry.y && y < (geometry.y + geometry.height);
-}
-
-/**
- * Traverses the BSP tree to find the IWindowNode at the given cursor coordinates.
- * @param rootNode The root of the BSP tree (e.g., the workspace's root node).
- * @param cursorX The X coordinate of the cursor.
- * @param cursorY The Y coordinate of the cursor.
- * @returns The IWindowNode being hovered, or null if no window is found at the coordinates.
- */
-export function findWindowAtCursor(rootNode: BspNode, cursorX: number, cursorY: number): IWindowNode | null {
-    // If the cursor is not within the root node's geometry, no window can be found
-    if (!isPointInGeometry(cursorX, cursorY, rootNode.geometry)) {
-        return null;
-    }
-
-    if (rootNode.type === 'window') {
-        // If it's a window node, and the cursor is within its geometry, return it
-        return rootNode;
-    } else {
-        // If it's a split node, determine which child the cursor is in and recurse
-        const splitNode = rootNode as ISplitNode; // Cast for type safety
-
-        const { x, y, width, height } = splitNode.geometry;
-        const { splitDirection, splitRatio, leftChild, rightChild } = splitNode;
-
-        if (splitDirection === 'vertical') {
-            // Vertical split: left and right children
-            const splitX = x + width * splitRatio;
-            if (cursorX < splitX) {
-                return findWindowAtCursor(leftChild, cursorX, cursorY);
-            } else {
-                return findWindowAtCursor(rightChild, cursorX, cursorY);
-            }
-        } else {
-            // Horizontal split: top and bottom children
-            const splitY = y + height * splitRatio;
-            if (cursorY < splitY) {
-                return findWindowAtCursor(leftChild, cursorX, cursorY);
-            } else {
-                return findWindowAtCursor(rightChild, cursorX, cursorY);
-            }
-        }
-    }
 }
 
 /**
