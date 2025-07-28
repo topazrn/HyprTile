@@ -323,6 +323,17 @@ export default class WindowManager {
         const newGeometry = window.get_frame_rect();
         this.adjustSplitRatio(node, node.parent, newGeometry);
 
+        if (node.parent.parent?.type === 'split') {
+            if (node.parent.parent.splitDirection === node.parent.splitDirection) {
+                this.resizeChildren(node.parent);
+            } else {
+                this.adjustSplitRatio(node.parent, node.parent.parent, newGeometry);
+                this.resizeChildren(node.parent.parent);
+            }
+        } else {
+            this.resizeChildren(node.parent);
+        }
+
         this.logger.log("");
         printBspTree(this.logger, this.rootNode, '  ');
         this.logger.log("");
@@ -346,17 +357,6 @@ export default class WindowManager {
         if (parent.splitRatio > 1 - this.minSplitRatio || parent.splitRatio < this.minSplitRatio) {
             this.logger.warn(`Split ratio ${parent.splitRatio} is out of bounds, min-max-ing ratio.`);
             parent.splitRatio = Math.max(this.minSplitRatio, Math.min(1 - this.minSplitRatio, parent.splitRatio));
-        }
-
-        if (parent.parent?.type === 'split') {
-            if (parent.parent.splitDirection === parent.splitDirection) {
-                this.resizeChildren(parent);
-            } else {
-                this.adjustSplitRatio(parent, parent.parent, newGeometry);
-                this.resizeChildren(parent.parent);
-            }
-        } else {
-            this.resizeChildren(parent);
         }
     }
     
