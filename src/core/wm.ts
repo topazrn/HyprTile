@@ -94,6 +94,13 @@ export default class WindowManager {
             return;
         }
 
+        if (findNodeFromWindowHandle(this.rootNode, newWindow)) {
+            // This happens when GNOME Shell resumes after a suspend.
+            // In this case, we should not push the window again.
+            this.logger.warn(`Window ${newWindow.title} already exists in workspace ${this.workspace}, monitor ${this.monitor}.`);
+            return;
+        }
+
         let [pointerX, pointerY] = Shell.Global.get().get_pointer();
         pointerX = Math.max(pointerX, this.workArea.x);
         pointerY = Math.max(pointerY, this.workArea.y);

@@ -17,7 +17,7 @@ export default class MyExtension extends Extension {
       (display, _, windowNotShown) => {
         const windowShown = windowNotShown.connect("shown",
           (window) => {
-            display.disconnect(windowShown);
+            windowNotShown.disconnect(windowShown);
             WindowManager.push(display, window)
           }
         );
