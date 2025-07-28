@@ -161,7 +161,7 @@ export default class WindowManager {
             null
         );
         const parent = createSplitNode(
-            splitDirection, // Assuming horizontal split for simplicity
+            splitDirection,
             this.defaultSplitRatio,
             hover === 'left' ? newNode : oldNode,
             hover === 'left' ? oldNode : newNode,
@@ -329,7 +329,6 @@ export default class WindowManager {
     }
 
     private adjustSplitRatio(node: BspNode, parent: ISplitNode, newGeometry: IGeometry): void {
-        const oldSplitRatio = parent.splitRatio;
         if (parent.splitDirection === 'vertical') {
             if (parent.leftChild === node) {
                 parent.splitRatio = newGeometry.width / parent.geometry.width;
@@ -345,8 +344,8 @@ export default class WindowManager {
         }
 
         if (parent.splitRatio > 1 - this.minSplitRatio || parent.splitRatio < this.minSplitRatio) {
-            this.logger.warn(`Split ratio ${parent.splitRatio} is out of bounds, using previous ratio.`);
-            parent.splitRatio = oldSplitRatio;
+            this.logger.warn(`Split ratio ${parent.splitRatio} is out of bounds, min-max-ing ratio.`);
+            parent.splitRatio = Math.max(this.minSplitRatio, Math.min(1 - this.minSplitRatio, parent.splitRatio));
         }
 
         if (parent.parent?.type === 'split') {
