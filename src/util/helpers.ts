@@ -1,6 +1,7 @@
 import { EasingParamsWithProperties } from "@girs/gnome-shell/extensions/global";
 import Meta from "gi://Meta";
 import Clutter from "gi://Clutter";
+import Gio from "gi://Gio";
 
 /**
  * Represents the geometric properties of a window or a screen region.
@@ -20,39 +21,63 @@ export function isPointInGeometry(x: number, y: number, geometry: IGeometry): bo
         y >= geometry.y && y < (geometry.y + geometry.height);
 }
 
-export function resizeWindow(windowHandle: Meta.Window, newGeometry: IGeometry, animate: boolean): void {
-    if (!animate) {
-        windowHandle.unmaximize(Meta.MaximizeFlags.BOTH);
-        windowHandle.move_resize_frame(true, newGeometry.x, newGeometry.y, newGeometry.width, newGeometry.height);
-        return;
-    }
+export function resizeWindow(windowHandle: Meta.Window, newGeometry: IGeometry, workArea: IGeometry, settings: Gio.Settings): void {
+    const animate = settings.get_boolean("animate");
+    const gapsIn = settings.get_int("gaps-in")
+    const gapsOut = settings.get_int("gaps-out")
 
-    const oldGeometry: IGeometry = windowHandle.get_frame_rect();
-    if (
-        oldGeometry.x === newGeometry.x &&
-        oldGeometry.y === newGeometry.y &&
-        oldGeometry.width === newGeometry.width &&
-        oldGeometry.height === newGeometry.height
-    ) return;
+    const gap = {
+        x: newGeometry.x === workArea.x ? gapsOut : gapsIn,
+        y: newGeometry.y === workArea.y ? gapsOut : gapsIn,
+        width: newGeometry.x + newGeometry.width === workArea.x + workArea.width ? gapsOut : gapsIn,
+        height: newGeometry.y + newGeometry.height === workArea.y + workArea.height ? gapsOut : gapsIn,
+    };
+
+    const gappedNewGeometry = {
+        x: newGeometry.x + gap.x,
+        y: newGeometry.y + gap.y,
+        width: newGeometry.width - gap.x - gap.width,
+        height: newGeometry.height - gap.y - gap.height
+    }
 
     const actor: Meta.WindowActor | null = windowHandle.get_compositor_private();
-    if (!actor) {
-        console.warn("Warning: Window actor is null, cannot animate resize. Performing instant resize.");
+
+    if (!animate || !actor) {
         windowHandle.unmaximize(Meta.MaximizeFlags.BOTH);
-        windowHandle.move_resize_frame(true, newGeometry.x, newGeometry.y, newGeometry.width, newGeometry.height);
+        windowHandle.move_resize_frame(
+            true,
+            gappedNewGeometry.x,
+            gappedNewGeometry.y,
+            gappedNewGeometry.width,
+            gappedNewGeometry.height
+        );
         return;
     }
 
-    const actorMargin = { width: actor.width - oldGeometry.width, height: actor.height - oldGeometry.height }
+    const gappedOldGeometry: IGeometry = windowHandle.get_frame_rect();
+    if (
+        gappedOldGeometry.x === gappedNewGeometry.x &&
+        gappedOldGeometry.y === gappedNewGeometry.y &&
+        gappedOldGeometry.width === gappedNewGeometry.width &&
+        gappedOldGeometry.height === gappedNewGeometry.height
+    ) return;
+
+    const actorMargin = { width: actor.width - gappedOldGeometry.width, height: actor.height - gappedOldGeometry.height }
     const duration = 700;
 
     windowHandle.unmaximize(Meta.MaximizeFlags.BOTH);
-    windowHandle.move_resize_frame(true, newGeometry.x, newGeometry.y, newGeometry.width, newGeometry.height);
+    windowHandle.move_resize_frame(
+        true,
+        gappedNewGeometry.x,
+        gappedNewGeometry.y,
+        gappedNewGeometry.width,
+        gappedNewGeometry.height
+    );
 
-    actor.scaleX = oldGeometry.width / newGeometry.width;
-    actor.scaleY = oldGeometry.height / newGeometry.height;
-    actor.translationX = (oldGeometry.x - newGeometry.x) + (1 - actor.scaleX) * actorMargin.width;
-    actor.translationY = (oldGeometry.y - newGeometry.y) + (1 - actor.scaleY) * actorMargin.height;
+    actor.scaleX = gappedOldGeometry.width / gappedNewGeometry.width;
+    actor.scaleY = gappedOldGeometry.height / gappedNewGeometry.height;
+    actor.translationX = (gappedOldGeometry.x - gappedNewGeometry.x) + (1 - actor.scaleX) * actorMargin.width;
+    actor.translationY = (gappedOldGeometry.y - gappedNewGeometry.y) + (1 - actor.scaleY) * actorMargin.height;
 
     const easeParams: EasingParamsWithProperties = {
         translationX: 0,

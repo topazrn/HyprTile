@@ -260,7 +260,7 @@ export default class WindowManager {
     // This is used to resize the windows after a pop operation
     private resizeChildren(node: BspNode): void {
         if (node.type === 'window') {
-            resizeWindow(node.windowHandle, node.geometry, this.settings.get_boolean('animate'));
+            resizeWindow(node.windowHandle, node.geometry, this.workArea, this.settings);
             return;
         }
 
