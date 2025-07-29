@@ -1,7 +1,7 @@
 import Meta from 'gi://Meta';
 import Shell from 'gi://Shell';
 import { Extension, ExtensionMetadata } from 'resource:///org/gnome/shell/extensions/extension.js';
-import WindowManager from './core/wm.js';
+import WindowManager from './layout/dwindle.js';
 
 export default class MyExtension extends Extension {
   private connections: number[] = [];
