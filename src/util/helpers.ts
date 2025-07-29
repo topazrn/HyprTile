@@ -49,10 +49,10 @@ export function resizeWindow(windowHandle: Meta.Window, newGeometry: IGeometry, 
     windowHandle.unmaximize(Meta.MaximizeFlags.BOTH);
     windowHandle.move_resize_frame(true, newGeometry.x, newGeometry.y, newGeometry.width, newGeometry.height);
 
-    actor.translationX = (oldGeometry.x - newGeometry.x);
-    actor.translationY = (oldGeometry.y - newGeometry.y);
-    actor.scaleX = ((oldGeometry.width + actorMargin.width) / (newGeometry.width + actorMargin.width));
-    actor.scaleY = ((oldGeometry.height + actorMargin.height) / (newGeometry.height + actorMargin.height));
+    actor.scaleX = oldGeometry.width / newGeometry.width;
+    actor.scaleY = oldGeometry.height / newGeometry.height;
+    actor.translationX = (oldGeometry.x - newGeometry.x) + (1 - actor.scaleX) * actorMargin.width;
+    actor.translationY = (oldGeometry.y - newGeometry.y) + (1 - actor.scaleY) * actorMargin.height;
 
     const easeParams: EasingParamsWithProperties = {
         translationX: 0,
