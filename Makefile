@@ -3,16 +3,16 @@ DOMAIN=topazrn.com
 
 .PHONY: all pack install clean
 
-all: dist/*
+all: dist schemas
 
 node_modules: package.json
 	bun install
 
-dist/*: node_modules
+dist: node_modules
 	bunx tsc
 
-schemas/gschemas.compiled: src/schemas/org.gnome.shell.extensions.$(NAME).gschema.xml
-	glib-compile-schemas schemas
+schemas: src/schemas/*
+	glib-compile-schemas src/schemas
 
 $(NAME).zip: dist/extension.js dist/prefs.js src/schemas/gschemas.compiled
 	@cp -r src/schemas dist/

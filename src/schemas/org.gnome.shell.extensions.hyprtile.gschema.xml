@@ -1,10 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <schemalist>
   <schema id="org.gnome.shell.extensions.hyprtile" path="/org/gnome/shell/extensions/hyprtile/">
-      <key name="padding-inner" type="i">
-      <default>8</default>
-      <summary>Inner padding</summary>
-      <description>Padding between windows</description>
+    <key name="gaps-in" type="i">
+      <default>5</default>
+      <summary>Gaps In</summary>
+      <description>Gaps between windows</description>
+    </key>
+    <key name="gaps-out" type="i">
+      <default>20</default>
+      <summary>Gaps Out</summary>
+      <description>Gaps between windows and monitor edges</description>
     </key>
     <key name="animate" type="b">
       <default>true</default>

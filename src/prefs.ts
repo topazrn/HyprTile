@@ -26,27 +26,39 @@ export default class GnomeRectanglePreferences extends ExtensionPreferences {
     });
     animationGroup.add(animationEnabled);
 
-    const paddingGroup = new Adw.PreferencesGroup({
-      title: _('Paddings'),
-      description: _('Configure the padding between windows'),
+    const gapsGroup = new Adw.PreferencesGroup({
+      title: _('Gaps'),
+      description: _('Configure the gaps between windows'),
     });
-    page.add(paddingGroup);
+    page.add(gapsGroup);
 
-    const paddingInner = new Adw.SpinRow({
-      title: _('Inner'),
-      subtitle: _('Padding between windows'),
+    const gapsIn = new Adw.SpinRow({
+      title: _('Gaps In'),
+      subtitle: _('Gaps between windows'),
       adjustment: new Gtk.Adjustment({
         lower: 0,
         upper: 1000,
         stepIncrement: 1
       })
     });
-    paddingGroup.add(paddingInner);
+    gapsGroup.add(gapsIn);
+
+    const gapsOut = new Adw.SpinRow({
+      title: _('Gaps Out'),
+      subtitle: _('Gaps between windows and screen edges'),
+      adjustment: new Gtk.Adjustment({
+        lower: 0,
+        upper: 1000,
+        stepIncrement: 1
+      })
+    });
+    gapsGroup.add(gapsOut);
 
     window.add(page)
 
     this._settings!.bind('animate', animationEnabled, 'active', Gio.SettingsBindFlags.DEFAULT);
-    this._settings!.bind('padding-inner', paddingInner, 'value', Gio.SettingsBindFlags.DEFAULT);
+    this._settings!.bind('gaps-in', gapsIn, 'value', Gio.SettingsBindFlags.DEFAULT);
+    this._settings!.bind('gaps-out', gapsOut, 'value', Gio.SettingsBindFlags.DEFAULT);
 
     return Promise.resolve();
   }
