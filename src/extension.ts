@@ -69,20 +69,9 @@ export default class MyExtension extends Extension {
           operation === Meta.GrabOp.KEYBOARD_RESIZING_SE ||
           operation === Meta.GrabOp.KEYBOARD_RESIZING_W
         ) {
-          const geometry = window.get_frame_rect();
-          WindowManager.resizeNeighbors(display, window);
+          // Resize neighbors after a short delay to allow the resize operation to complete
+          // Incomplete resize operations can happen if the window is resized too quickly
           setTimeout(() => {
-            const newGeometry = window.get_frame_rect();
-            if (
-              newGeometry.x === geometry.x &&
-              newGeometry.y === geometry.y &&
-              newGeometry.width === geometry.width &&
-              newGeometry.height === geometry.height
-            ) return; // If the geometry hasn't changed, we don't need to resize neighbors again
-
-            // Resize neighbors after a short delay to allow the resize operation to complete
-            // Incomplete resize operations can happen if the window is resized too quickly
-            // This is a workaround to ensure the neighbors are resized correctly
             WindowManager.resizeNeighbors(display, window);
           }, 100);
         }

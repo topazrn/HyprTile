@@ -1,15 +1,6 @@
 import { ConsoleLike } from "@girs/gnome-shell/extensions/extension";
 import Meta from "gi://Meta";
-
-/**
- * Represents the geometric properties of a window or a screen region.
- */
-export interface IGeometry {
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-}
+import { IGeometry } from "./helpers.js";
 
 /**
  * Defines the possible directions for a split in the binary tree.
@@ -61,9 +52,6 @@ export type BspNode = ISplitNode | IWindowNode;
  * Helper function to create a new window node.
  */
 export function createWindowNode(windowHandle: Meta.Window, geometry: IGeometry, parent: BspNode | null = null): IWindowNode {
-    windowHandle.unmaximize(Meta.MaximizeFlags.BOTH);
-    windowHandle.move_resize_frame(true, geometry.x, geometry.y, geometry.width, geometry.height);
-
     return {
         type: 'window',
         windowHandle,
@@ -96,14 +84,6 @@ export function createSplitNode(
     leftChild.parent = splitNode;
     rightChild.parent = splitNode;
     return splitNode;
-}
-
-/**
- * Determines if a given point (cursorX, cursorY) is within the bounds of a geometry.
- */
-export function isPointInGeometry(x: number, y: number, geometry: IGeometry): boolean {
-    return x >= geometry.x && x < (geometry.x + geometry.width) &&
-        y >= geometry.y && y < (geometry.y + geometry.height);
 }
 
 /**

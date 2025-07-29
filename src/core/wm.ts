@@ -1,17 +1,17 @@
 import Meta from "gi://Meta";
 import Shell from "gi://Shell";
+import Gio from "gi://Gio";
 import { Extension } from 'resource:///org/gnome/shell/extensions/extension.js';
 import {
     BspNode,
     createSplitNode,
     createWindowNode,
     findNodeFromWindowHandle,
-    IGeometry,
     ISplitNode,
     printBspTree,
-    isPointInGeometry,
     IWindowNode,
 } from "../util/bsp.js";
+import { IGeometry, isPointInGeometry, resizeWindow } from "../util/helpers.js";
 import { ConsoleLike } from "@girs/gnome-shell/extensions/extension";
 
 export default class WindowManager {
@@ -59,8 +59,9 @@ export default class WindowManager {
     private rootNode: BspNode | null;
     private readonly workArea: IGeometry;
     private readonly logger: ConsoleLike;
+    private readonly settings: Gio.Settings;
     private readonly defaultSplitRatio: number = 0.5;
-    private readonly minSplitRatio: number = 0.1; 
+    private readonly minSplitRatio: number = 0.1;
 
     constructor(key: string) {
         this.key = key;
@@ -69,7 +70,9 @@ export default class WindowManager {
         this.monitor = monitor;
         this.rootNode = null;
         this.workArea = this.getWorkArea();
-        this.logger = Extension.lookupByUUID("hyprtile@topazrn.com")!.getLogger()
+        const extension = Extension.lookupByUUID("hyprtile@topazrn.com")!;
+        this.logger = extension.getLogger()
+        this.settings = extension.getSettings();
     }
 
     private getWorkArea(): IGeometry {
@@ -91,6 +94,7 @@ export default class WindowManager {
                 geometry,
                 null
             )
+            this.resizeChildren(this.rootNode);
             return;
         }
 
@@ -190,6 +194,8 @@ export default class WindowManager {
             parent.parent = grandParent;
         }
 
+        this.resizeChildren(parent); // Resize the children of the new split node
+
         this.logger.log("");
         printBspTree(this.logger, this.rootNode, '  ');
         this.logger.log("");
@@ -254,9 +260,7 @@ export default class WindowManager {
     // This is used to resize the windows after a pop operation
     private resizeChildren(node: BspNode): void {
         if (node.type === 'window') {
-            const { windowHandle, geometry } = node;
-            windowHandle.unmaximize(Meta.MaximizeFlags.BOTH);
-            windowHandle.move_resize_frame(true, geometry.x, geometry.y, geometry.width, geometry.height);
+            resizeWindow(node.windowHandle, node.geometry, this.settings.get_boolean('animate'));
             return;
         }
 
@@ -355,27 +359,27 @@ export default class WindowManager {
         }
 
         if (parent.splitRatio > 1 - this.minSplitRatio || parent.splitRatio < this.minSplitRatio) {
-            this.logger.warn(`Split ratio ${parent.splitRatio} is out of bounds, min-max-ing ratio.`);
-            parent.splitRatio = Math.max(this.minSplitRatio, Math.min(1 - this.minSplitRatio, parent.splitRatio));
+            this.logger.warn(`Split ratio ${parent.splitRatio} is out of bounds, clamping ratio.`);
+            parent.splitRatio = Math.clamp(parent.splitRatio, this.minSplitRatio, 1 - this.minSplitRatio);
         }
     }
-    
+
     private windowAtPointer(rootNode: BspNode, cursorX: number, cursorY: number): IWindowNode | null {
         // If the cursor is not within the root node's geometry, no window can be found
         if (!isPointInGeometry(cursorX, cursorY, rootNode.geometry)) {
             return null;
         }
-    
+
         if (rootNode.type === 'window') {
             // If it's a window node, and the cursor is within its geometry, return it
             return rootNode;
         } else {
             // If it's a split node, determine which child the cursor is in and recurse
             const splitNode = rootNode; // Cast for type safety
-    
+
             const { x, y, width, height } = splitNode.geometry;
             const { splitDirection, splitRatio, leftChild, rightChild } = splitNode;
-    
+
             if (splitDirection === 'vertical') {
                 // Vertical split: left and right children
                 const splitX = x + width * splitRatio;
