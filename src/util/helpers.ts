@@ -27,21 +27,6 @@ export function resizeWindow(windowHandle: Meta.Window, newGeometry: IGeometry, 
     const gapsOut = settings.get_int("gaps-out")
 
     const gappedNewGeometry = addGaps(newGeometry, workArea, gapsIn, gapsOut);
-
-    const actor: Meta.WindowActor | null = windowHandle.get_compositor_private();
-
-    if (!animate || !actor) {
-        windowHandle.unmaximize(Meta.MaximizeFlags.BOTH);
-        windowHandle.move_resize_frame(
-            true,
-            gappedNewGeometry.x,
-            gappedNewGeometry.y,
-            gappedNewGeometry.width,
-            gappedNewGeometry.height
-        );
-        return;
-    }
-
     const gappedOldGeometry: IGeometry = windowHandle.get_frame_rect();
     if (
         gappedOldGeometry.x === gappedNewGeometry.x &&
@@ -50,36 +35,68 @@ export function resizeWindow(windowHandle: Meta.Window, newGeometry: IGeometry, 
         gappedOldGeometry.height === gappedNewGeometry.height
     ) return;
 
-    const actorMargin = { 
-        width: actor.width - gappedOldGeometry.width, 
-        height: actor.height - gappedOldGeometry.height 
-    };
-    const duration = 700;
+    const actor: Meta.WindowActor | null = windowHandle.get_compositor_private();
 
-    windowHandle.unmaximize(Meta.MaximizeFlags.BOTH);
-    windowHandle.move_resize_frame(
-        true,
-        gappedNewGeometry.x,
-        gappedNewGeometry.y,
-        gappedNewGeometry.width,
-        gappedNewGeometry.height
-    );
+    if (!animate || !actor) {
+        simpleResizeWindow(windowHandle, gappedNewGeometry);
+        return;
+    }
 
-    actor.scaleX = gappedOldGeometry.width / gappedNewGeometry.width;
-    actor.scaleY = gappedOldGeometry.height / gappedNewGeometry.height;
-    actor.translationX = (gappedOldGeometry.x - gappedNewGeometry.x) + (1 - actor.scaleX) * actorMargin.width;
-    actor.translationY = (gappedOldGeometry.y - gappedNewGeometry.y) + (1 - actor.scaleY) * actorMargin.height;
+    const onSizeChanged = () => {
+        const actorMargin = {
+            width: actor.width - gappedOldGeometry.width,
+            height: actor.height - gappedOldGeometry.height
+        };
 
-    const easeParams: EasingParamsWithProperties = {
-        translationX: 0,
-        translationY: 0,
-        scaleX: 1,
-        scaleY: 1,
-        mode: Clutter.AnimationMode.EASE_IN_OUT_EXPO,
-        duration: duration,
-    };
+        const easeParams: EasingParamsWithProperties = {
+            translationX: 0,
+            translationY: 0,
+            scaleX: 1,
+            scaleY: 1,
+            mode: Clutter.AnimationMode.EASE_IN_OUT_EXPO,
+            duration: 700,
+        };
 
-    (actor as any).ease(easeParams);
+        actor.scaleX = gappedOldGeometry.width / gappedNewGeometry.width;
+        actor.scaleY = gappedOldGeometry.height / gappedNewGeometry.height;
+        actor.translationX = (gappedOldGeometry.x - gappedNewGeometry.x) + (1 - actor.scaleX) * actorMargin.width;
+        actor.translationY = (gappedOldGeometry.y - gappedNewGeometry.y) + (1 - actor.scaleY) * actorMargin.height;
+
+        windowHandle.disconnect(onSizeChangedHandle);
+
+        (actor as any).ease(easeParams);
+    }
+    const onSizeChangedHandle = windowHandle.connect("size-changed", onSizeChanged);
+
+    simpleResizeWindow(windowHandle, gappedNewGeometry);
+}
+
+export function simpleResizeWindow(windowHandle: Meta.Window, newGeometry: IGeometry) {
+    if (windowHandle.maximizedHorizontally && windowHandle.maximizedVertically) {
+        windowHandle.unmaximize(Meta.MaximizeFlags.BOTH);
+    } else if (windowHandle.maximizedHorizontally) {
+        windowHandle.unmaximize(Meta.MaximizeFlags.HORIZONTAL);
+    } else if (windowHandle.maximizedVertically) {
+        windowHandle.unmaximize(Meta.MaximizeFlags.VERTICAL);
+    }
+
+    const geometry = windowHandle.get_frame_rect();
+
+    if (geometry.width === newGeometry.width && geometry.height === newGeometry.height) {
+        windowHandle.move_frame(
+            true,
+            newGeometry.x,
+            newGeometry.y
+        )
+    } else {
+        windowHandle.move_resize_frame(
+            true,
+            newGeometry.x,
+            newGeometry.y,
+            newGeometry.width,
+            newGeometry.height
+        );
+    }
 }
 
 // Assuming geometry not gapped
