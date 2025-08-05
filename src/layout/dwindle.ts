@@ -11,7 +11,7 @@ import {
     printBspTree,
     IWindowNode,
 } from "../util/bsp.js";
-import { IGeometry, isPointInGeometry, resizeWindow } from "../util/helpers.js";
+import { IGeometry, isPointInGeometry, removeGaps, resizeWindow } from "../util/helpers.js";
 import { ConsoleLike } from "@girs/gnome-shell/extensions/extension";
 
 export default class WindowManager {
@@ -324,7 +324,8 @@ export default class WindowManager {
             return;
         }
 
-        const newGeometry = window.get_frame_rect();
+        const newGeometry = removeGaps(window.get_frame_rect(), this.workArea, this.settings.get_int("gaps-in"), this.settings.get_int("gaps-out"));
+        
         this.adjustSplitRatio(node, node.parent, newGeometry);
 
         if (node.parent.parent?.type === 'split') {

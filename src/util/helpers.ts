@@ -26,19 +26,7 @@ export function resizeWindow(windowHandle: Meta.Window, newGeometry: IGeometry, 
     const gapsIn = settings.get_int("gaps-in")
     const gapsOut = settings.get_int("gaps-out")
 
-    const gap = {
-        x: newGeometry.x === workArea.x ? gapsOut : gapsIn,
-        y: newGeometry.y === workArea.y ? gapsOut : gapsIn,
-        width: newGeometry.x + newGeometry.width === workArea.x + workArea.width ? gapsOut : gapsIn,
-        height: newGeometry.y + newGeometry.height === workArea.y + workArea.height ? gapsOut : gapsIn,
-    };
-
-    const gappedNewGeometry = {
-        x: newGeometry.x + gap.x,
-        y: newGeometry.y + gap.y,
-        width: newGeometry.width - gap.x - gap.width,
-        height: newGeometry.height - gap.y - gap.height
-    }
+    const gappedNewGeometry = addGaps(newGeometry, workArea, gapsIn, gapsOut);
 
     const actor: Meta.WindowActor | null = windowHandle.get_compositor_private();
 
@@ -62,7 +50,10 @@ export function resizeWindow(windowHandle: Meta.Window, newGeometry: IGeometry, 
         gappedOldGeometry.height === gappedNewGeometry.height
     ) return;
 
-    const actorMargin = { width: actor.width - gappedOldGeometry.width, height: actor.height - gappedOldGeometry.height }
+    const actorMargin = { 
+        width: actor.width - gappedOldGeometry.width, 
+        height: actor.height - gappedOldGeometry.height 
+    };
     const duration = 700;
 
     windowHandle.unmaximize(Meta.MaximizeFlags.BOTH);
@@ -89,4 +80,48 @@ export function resizeWindow(windowHandle: Meta.Window, newGeometry: IGeometry, 
     };
 
     (actor as any).ease(easeParams);
+}
+
+// Assuming geometry not gapped
+export function addGaps(geometry: IGeometry, workArea: IGeometry, gapsIn: number, gapsOut: number) {
+    const leftIsOut = geometry.x === workArea.x;
+    const topIsOut = geometry.y === workArea.y;
+    const rightIsOut = geometry.x + geometry.width === workArea.x + workArea.width;
+    const bottomIsOut = geometry.y + geometry.height === workArea.y + workArea.height;
+
+    const gap = {
+        x: leftIsOut ? gapsOut : gapsIn,
+        y: topIsOut ? gapsOut : gapsIn,
+        width: rightIsOut ? gapsOut : gapsIn,
+        height: bottomIsOut ? gapsOut : gapsIn,
+    };
+
+    return {
+        x: geometry.x + gap.x,
+        y: geometry.y + gap.y,
+        width: geometry.width - gap.x - gap.width,
+        height: geometry.height - gap.y - gap.height
+    }
+}
+
+// Assuming geometry has gaps
+export function removeGaps(geometry: IGeometry, workArea: IGeometry, gapsIn: number, gapsOut: number) {
+    const leftIsOut = geometry.x - gapsOut == workArea.x;
+    const topIsOut = geometry.y - gapsOut == workArea.y;
+    const rightIsOut = geometry.x + geometry.width + gapsOut === workArea.x + workArea.width;
+    const bottomIsOut = geometry.y + geometry.height === workArea.y + workArea.height;
+
+    const gap = {
+        x: leftIsOut ? gapsOut : gapsIn,
+        y: topIsOut ? gapsOut : gapsIn,
+        width: rightIsOut ? gapsOut : gapsIn,
+        height: bottomIsOut ? gapsOut : gapsIn,
+    };
+
+    return {
+        x: geometry.x - gap.x,
+        y: geometry.y - gap.y,
+        width: geometry.width + gap.x + gap.width,
+        height: geometry.height + gap.y + gap.height
+    }
 }
