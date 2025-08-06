@@ -11,7 +11,7 @@ import {
     printBspTree,
     IWindowNode,
 } from "../util/bsp.js";
-import { IGeometry, isPointInGeometry, removeGaps, resizeWindow } from "../util/helpers.js";
+import { IGeometry, isPointInGeometry, removeGaps, resizeWindow, windowFilter } from "../util/helpers.js";
 import { ConsoleLike } from "@girs/gnome-shell/extensions/extension";
 
 export default class WindowManager {
@@ -25,6 +25,7 @@ export default class WindowManager {
     }
 
     public static push(display: Meta.Display, newWindow: Meta.Window): void {
+        if (!windowFilter(newWindow)) return;
         let [wm, key] = this.getInstance(display);
         if (!wm) {
             wm = new WindowManager(key);

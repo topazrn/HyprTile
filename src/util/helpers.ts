@@ -142,3 +142,11 @@ export function removeGaps(geometry: IGeometry, workArea: IGeometry, gapsIn: num
         height: geometry.height + gap.y + gap.height
     }
 }
+
+export function windowFilter(window: Meta.Window): boolean {
+    if (window.windowType !== Meta.WindowType.NORMAL) return false;
+    if (window.get_transient_for()) return false;
+    if (window.is_on_all_workspaces()) return false;
+
+    return true;
+}
