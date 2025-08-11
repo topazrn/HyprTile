@@ -24,14 +24,14 @@ export default class WindowManager {
         return [this.instances.get(key), key];
     }
 
-    public static push(display: Meta.Display, newWindow: Meta.Window): void {
+    public static push(display: Meta.Display, newWindow: Meta.Window, onPointer: boolean = true): void {
         if (!windowFilter(newWindow)) return;
         let [wm, key] = this.getInstance(display);
         if (!wm) {
             wm = new WindowManager(key);
             this.instances.set(key, wm);
         }
-        wm.push(newWindow);
+        wm.push(newWindow, onPointer);
     }
 
     public static pop(display: Meta.Display, oldWindow: Meta.Window): void {
@@ -87,7 +87,7 @@ export default class WindowManager {
         return workspace.get_work_area_for_monitor(this.monitor);
     }
 
-    private push(newWindow: Meta.Window): void {
+    private push(newWindow: Meta.Window, onPointer: boolean): void {
         if (!this.rootNode) {
             const geometry = this.workArea;
             this.rootNode = createWindowNode(
@@ -106,14 +106,22 @@ export default class WindowManager {
             return;
         }
 
-        let [pointerX, pointerY] = Shell.Global.get().get_pointer();
-        pointerX = Math.max(pointerX, this.workArea.x);
-        pointerY = Math.max(pointerY, this.workArea.y);
-        pointerX = Math.min(pointerX, this.workArea.width - 1);
-        pointerY = Math.min(pointerY, this.workArea.height - 1);
+        let targetX = 0;
+        let targetY = 0;
+        if (onPointer) {
+            let [pointerX, pointerY, _] = Shell.Global.get().get_pointer();
+            targetX = pointerX;
+            targetY = pointerY;
+        } else {
+            const rect = newWindow.get_frame_rect();
+            targetX = rect.x + rect.width / 2;
+            targetY = rect.y + rect.height / 2;
+        }
+        targetX = Math.clamp(targetX, this.workArea.x, this.workArea.x + this.workArea.width - 1);
+        targetY = Math.clamp(targetY, this.workArea.y, this.workArea.y + this.workArea.height - 1);
 
-        let node = this.windowAtPointer(this.rootNode, pointerX, pointerY);
-        this.logger.log(`Pointer at (${pointerX}, ${pointerY})`);
+        let node = this.windowAtPointer(this.rootNode, targetX, targetY);
+        this.logger.log(`Pointer at (${targetX}, ${targetY})`);
         if (!node) return; // Already handled at the beginning of the function
 
         const isHorizontal = node.geometry.width > node.geometry.height; // Determine split direction based on geometry aspect ratio
@@ -121,8 +129,8 @@ export default class WindowManager {
         // right is right for vertical split, right is bottom for horizontal split
         // left is left for vertical split, left is top for horizontal split
         const hover = isHorizontal ?
-            (pointerX < node.geometry.x + node.geometry.width * this.defaultSplitRatio ? 'left' : 'right') :
-            (pointerY < node.geometry.y + node.geometry.height * this.defaultSplitRatio ? 'left' : 'right');
+            (targetX < node.geometry.x + node.geometry.width * this.defaultSplitRatio ? 'left' : 'right') :
+            (targetY < node.geometry.y + node.geometry.height * this.defaultSplitRatio ? 'left' : 'right');
 
         const oldGeometry: IGeometry = {
             x: node.geometry.x,

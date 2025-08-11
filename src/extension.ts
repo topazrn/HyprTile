@@ -55,7 +55,7 @@ export default class MyExtension extends Extension {
           operation === Meta.GrabOp.MOVING_UNCONSTRAINED ||
           operation === Meta.GrabOp.KEYBOARD_MOVING
         ) {
-          WindowManager.push(display, window);
+          WindowManager.push(display, window, false);
         }
 
         if (
