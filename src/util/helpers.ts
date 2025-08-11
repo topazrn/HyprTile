@@ -42,7 +42,7 @@ export function resizeWindow(windowHandle: Meta.Window, newGeometry: IGeometry, 
         return;
     }
 
-    const onSizeChanged = () => {
+    const onChanged = () => {
         const actorMargin = {
             width: actor.width - gappedOldGeometry.width,
             height: actor.height - gappedOldGeometry.height
@@ -63,10 +63,12 @@ export function resizeWindow(windowHandle: Meta.Window, newGeometry: IGeometry, 
         actor.translationY = (gappedOldGeometry.y - gappedNewGeometry.y) + (1 - actor.scaleY) * actorMargin.height;
 
         windowHandle.disconnect(onSizeChangedHandle);
+        windowHandle.disconnect(onPositionChangedHandle);
 
         (actor as any).ease(easeParams);
     }
-    const onSizeChangedHandle = windowHandle.connect("size-changed", onSizeChanged);
+    const onSizeChangedHandle = windowHandle.connect("size-changed", onChanged);
+    const onPositionChangedHandle = windowHandle.connect("position-changed", onChanged)
 
     simpleResizeWindow(windowHandle, gappedNewGeometry);
 }
