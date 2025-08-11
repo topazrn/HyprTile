@@ -15,14 +15,18 @@ export default class MyExtension extends Extension {
 
     const windowEntered = display.connect("window-entered-monitor",
       (display, _, windowMightNotShown) => {
-        if (windowMightNotShown.title) {
-          WindowManager.push(display, windowMightNotShown)
-          return;
-        }
+        if (windowMightNotShown.title) return WindowManager.push(display, windowMightNotShown)
+
         const windowShown = windowMightNotShown.connect("shown",
           (window) => {
             windowMightNotShown.disconnect(windowShown);
-            WindowManager.push(display, window)
+            const actor: Meta.WindowActor = window.get_compositor_private();
+            if (!actor) return WindowManager.push(display, window);
+
+            const effectsCompleted = actor.connect("effects-completed", (_) => {
+              actor.disconnect(effectsCompleted);
+              WindowManager.push(display, window);
+            })
           }
         );
       }
