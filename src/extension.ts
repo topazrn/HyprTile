@@ -14,10 +14,14 @@ export default class MyExtension extends Extension {
     const display = Shell.Global.get().display;
 
     const windowEntered = display.connect("window-entered-monitor",
-      (display, _, windowNotShown) => {
-        const windowShown = windowNotShown.connect("shown",
+      (display, _, windowMightNotShown) => {
+        if (windowMightNotShown.title) {
+          WindowManager.push(display, windowMightNotShown)
+          return;
+        }
+        const windowShown = windowMightNotShown.connect("shown",
           (window) => {
-            windowNotShown.disconnect(windowShown);
+            windowMightNotShown.disconnect(windowShown);
             WindowManager.push(display, window)
           }
         );
