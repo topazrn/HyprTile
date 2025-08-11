@@ -68,7 +68,7 @@ export function resizeWindow(windowHandle: Meta.Window, newGeometry: IGeometry, 
         (actor as any).ease(easeParams);
     }
     const onSizeChangedHandle = windowHandle.connect("size-changed", onChanged);
-    const onPositionChangedHandle = windowHandle.connect("position-changed", onChanged)
+    const onPositionChangedHandle = windowHandle.connect("position-changed", onChanged);
 
     simpleResizeWindow(windowHandle, gappedNewGeometry);
 }
@@ -109,17 +109,17 @@ export function addGaps(geometry: IGeometry, workArea: IGeometry, gapsIn: number
     const bottomIsOut = geometry.y + geometry.height === workArea.y + workArea.height;
 
     const gap = {
-        x: leftIsOut ? gapsOut : gapsIn,
-        y: topIsOut ? gapsOut : gapsIn,
-        width: rightIsOut ? gapsOut : gapsIn,
-        height: bottomIsOut ? gapsOut : gapsIn,
+        left: leftIsOut ? gapsOut : gapsIn,
+        top: topIsOut ? gapsOut : gapsIn,
+        right: rightIsOut ? gapsOut : gapsIn,
+        bottom: bottomIsOut ? gapsOut : gapsIn,
     };
 
     return {
-        x: geometry.x + gap.x,
-        y: geometry.y + gap.y,
-        width: geometry.width - gap.x - gap.width,
-        height: geometry.height - gap.y - gap.height
+        x: geometry.x + gap.left,
+        y: geometry.y + gap.top,
+        width: geometry.width - gap.left - gap.right,
+        height: geometry.height - gap.top - gap.bottom
     }
 }
 
@@ -131,17 +131,17 @@ export function removeGaps(geometry: IGeometry, workArea: IGeometry, gapsIn: num
     const bottomIsOut = geometry.y + geometry.height === workArea.y + workArea.height;
 
     const gap = {
-        x: leftIsOut ? gapsOut : gapsIn,
-        y: topIsOut ? gapsOut : gapsIn,
-        width: rightIsOut ? gapsOut : gapsIn,
-        height: bottomIsOut ? gapsOut : gapsIn,
+        left: leftIsOut ? gapsOut : gapsIn,
+        top: topIsOut ? gapsOut : gapsIn,
+        right: rightIsOut ? gapsOut : gapsIn,
+        bottom: bottomIsOut ? gapsOut : gapsIn,
     };
 
     return {
-        x: geometry.x - gap.x,
-        y: geometry.y - gap.y,
-        width: geometry.width + gap.x + gap.width,
-        height: geometry.height + gap.y + gap.height
+        x: geometry.x - gap.left,
+        y: geometry.y - gap.top,
+        width: geometry.width + gap.left + gap.right,
+        height: geometry.height + gap.top + gap.bottom,
     }
 }
 
