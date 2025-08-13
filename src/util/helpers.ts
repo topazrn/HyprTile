@@ -3,12 +3,16 @@ import Meta from "gi://Meta";
 import Clutter from "gi://Clutter";
 import Gio from "gi://Gio";
 
+
+export interface IPoint {
+    x: number;
+    y: number;
+}
+
 /**
  * Represents the geometric properties of a window or a screen region.
  */
-export interface IGeometry {
-    x: number;
-    y: number;
+export interface IGeometry extends IPoint {
     width: number;
     height: number;
 }

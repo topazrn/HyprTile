@@ -2,47 +2,48 @@ import Meta from 'gi://Meta';
 import Shell from 'gi://Shell';
 import { Extension, ExtensionMetadata } from 'resource:///org/gnome/shell/extensions/extension.js';
 import WindowManager from './layout/dwindle.js';
+import { IPoint } from './util/helpers.js';
 
 export default class MyExtension extends Extension {
   private connections: number[] = [];
-  private display = Shell.Global.get().display;
+  private shell = Shell.Global.get();
+  private display = this.shell.display;
 
   constructor(metadata: ExtensionMetadata) {
     super(metadata);
   }
 
   enable() {
-    const windowEntered = this.display.connect_after("window-entered-monitor",
-      (display, _, windowMightNotShown) => {
-        if (windowMightNotShown.title) {
-          WindowManager.push(windowMightNotShown);
-          return;
-        }
-
-        const windowShown = windowMightNotShown.connect_after("shown",
-          (window) => {
-            windowMightNotShown.disconnect(windowShown);
-            const actor: Meta.WindowActor = window.get_compositor_private();
-
-            const effectsCompleted = actor.connect_after("effects-completed", (_) => {
-              actor.disconnect(effectsCompleted);
-              WindowManager.push(window);
-            })
-          }
-        );
-
-        const windowChangedWorkspace = windowMightNotShown.connect_after("workspace-changed", (window) => {
-          WindowManager.pop(window);
-          WindowManager.push(window);
-        })
-
-        const windowClosed = windowMightNotShown.connect_after("unmanaged", () => {
-          windowMightNotShown.disconnect(windowChangedWorkspace);
-          windowMightNotShown.disconnect(windowClosed);
-        })
+    const windowEntered = this.display.connect_after("window-entered-monitor", (display, _, windowMightNotShown) => {
+      const [pointerX, pointerY, mod] = this.shell.get_pointer();
+      const point: IPoint = { x: pointerX, y: pointerY };
+      if (windowMightNotShown.title) {
+        WindowManager.push(windowMightNotShown, point);
+        return;
       }
-    );
 
+      const windowShown = windowMightNotShown.connect_after("shown",
+        (window) => {
+          windowMightNotShown.disconnect(windowShown);
+          const actor: Meta.WindowActor = window.get_compositor_private();
+
+          const effectsCompleted = actor.connect_after("effects-completed", (_) => {
+            actor.disconnect(effectsCompleted);
+            WindowManager.push(window, point);
+          })
+        }
+      );
+
+      const windowChangedWorkspace = windowMightNotShown.connect_after("workspace-changed", (window) => {
+        WindowManager.pop(window);
+        WindowManager.push(window);
+      })
+
+      const windowClosed = windowMightNotShown.connect_after("unmanaged", () => {
+        windowMightNotShown.disconnect(windowChangedWorkspace);
+        windowMightNotShown.disconnect(windowClosed);
+      })
+    });
 
     const windowLeft = this.display.connect_after("window-left-monitor",
       (display, _, window) => WindowManager.pop(window)
@@ -67,7 +68,7 @@ export default class MyExtension extends Extension {
           operation === Meta.GrabOp.MOVING_UNCONSTRAINED ||
           operation === Meta.GrabOp.KEYBOARD_MOVING
         ) {
-          WindowManager.push(window, false);
+          WindowManager.push(window);
         }
 
         if (

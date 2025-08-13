@@ -11,13 +11,13 @@ import {
     printBspTree,
     IWindowNode,
 } from "../util/bsp.js";
-import { IGeometry, isPointInGeometry, keyOf, removeGaps, resizeWindow, windowFilter } from "../util/helpers.js";
+import { IGeometry, IPoint, isPointInGeometry, keyOf, removeGaps, resizeWindow, windowFilter } from "../util/helpers.js";
 import { ConsoleLike } from "@girs/gnome-shell/extensions/extension";
 
 export default class WindowManager {
     private static instances = new Map<string, WindowManager>();
 
-    public static push(window: Meta.Window, onPointer: boolean = true): void {
+    public static push(window: Meta.Window, point?: IPoint): void {
         if (!windowFilter(window)) return;
         const key = keyOf(window);
         let wm = this.instances.get(key);
@@ -25,7 +25,7 @@ export default class WindowManager {
             wm = new WindowManager(key);
             this.instances.set(key, wm);
         }
-        wm.push(window, onPointer);
+        wm.push(window, point);
     }
 
     public static pop(window: Meta.Window, key?: string): void {
@@ -37,7 +37,7 @@ export default class WindowManager {
             }
             return wm.pop(window);
         }
-        
+
         for (const [key, wm] of this.instances) {
             if (!wm.rootNode) continue;
             if (findNodeFromWindowHandle(wm.rootNode, window)) {
@@ -90,7 +90,7 @@ export default class WindowManager {
         return workspace.get_work_area_for_monitor(this.monitor);
     }
 
-    private push(newWindow: Meta.Window, onPointer: boolean): void {
+    private push(newWindow: Meta.Window, point?: IPoint): void {
         if (!this.rootNode) {
             const geometry = this.workArea;
             this.rootNode = createWindowNode(
@@ -111,10 +111,9 @@ export default class WindowManager {
 
         let targetX = 0;
         let targetY = 0;
-        if (onPointer) {
-            let [pointerX, pointerY, _] = Shell.Global.get().get_pointer();
-            targetX = pointerX;
-            targetY = pointerY;
+        if (point) {
+            targetX = point.x;
+            targetY = point.y;
         } else {
             const rect = newWindow.get_frame_rect();
             targetX = rect.x + rect.width / 2;
