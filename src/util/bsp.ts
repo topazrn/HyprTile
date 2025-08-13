@@ -1,6 +1,26 @@
 import { ConsoleLike } from "@girs/gnome-shell/extensions/extension";
 import Meta from "gi://Meta";
-import { IGeometry } from "./helpers.js";
+
+export interface IPoint {
+    x: number;
+    y: number;
+}
+
+/**
+ * Represents the geometric properties of a window or a screen region.
+ */
+export interface IGeometry extends IPoint {
+    width: number;
+    height: number;
+}
+
+/**
+ * Determines if a given point (cursorX, cursorY) is within the bounds of a geometry.
+ */
+export function isPointInGeometry(x: number, y: number, geometry: IGeometry): boolean {
+    return x >= geometry.x && x < (geometry.x + geometry.width) &&
+        y >= geometry.y && y < (geometry.y + geometry.height);
+}
 
 /**
  * Defines the possible directions for a split in the binary tree.
@@ -139,5 +159,68 @@ export function printBspTree(logger: ConsoleLike, node: BspNode, indent: string 
         logger.log(`${indent}Split Node (Direction: ${splitNode.splitDirection}, Ratio: ${splitNode.splitRatio}) - Geo: (${node.geometry.x},${node.geometry.y},${node.geometry.width},${node.geometry.height})`);
         printBspTree(logger, splitNode.leftChild, indent + '  ├── ');
         printBspTree(logger, splitNode.rightChild, indent + '  └── ');
+    }
+}
+
+
+export function adjustSplitRatio(
+    node: BspNode,
+    parent: ISplitNode,
+    newGeometry: IGeometry,
+    minSplitRatio: number,
+): void {
+    if (parent.splitDirection === 'vertical') {
+        if (parent.leftChild === node) {
+            parent.splitRatio = newGeometry.width / parent.geometry.width;
+        } else {
+            parent.splitRatio = (parent.geometry.width - newGeometry.width) / parent.geometry.width;
+        }
+    } else {
+        if (parent.leftChild === node) {
+            parent.splitRatio = (newGeometry.height) / parent.geometry.height;
+        } else {
+            parent.splitRatio = (parent.geometry.height - newGeometry.height) / parent.geometry.height;
+        }
+    }
+
+    if (parent.splitRatio > 1 - minSplitRatio || parent.splitRatio < minSplitRatio) {
+        console.debug(`Split ratio ${parent.splitRatio} is out of bounds, clamping ratio.`);
+        parent.splitRatio = Math.clamp(parent.splitRatio, minSplitRatio, 1 - minSplitRatio);
+    }
+}
+
+export function windowAtPointer(rootNode: BspNode, cursorX: number, cursorY: number): IWindowNode | null {
+    // If the cursor is not within the root node's geometry, no window can be found
+    if (!isPointInGeometry(cursorX, cursorY, rootNode.geometry)) {
+        return null;
+    }
+
+    if (rootNode.type === 'window') {
+        // If it's a window node, and the cursor is within its geometry, return it
+        return rootNode;
+    } else {
+        // If it's a split node, determine which child the cursor is in and recurse
+        const splitNode = rootNode; // Cast for type safety
+
+        const { x, y, width, height } = splitNode.geometry;
+        const { splitDirection, splitRatio, leftChild, rightChild } = splitNode;
+
+        if (splitDirection === 'vertical') {
+            // Vertical split: left and right children
+            const splitX = x + width * splitRatio;
+            if (cursorX < splitX) {
+                return windowAtPointer(leftChild, cursorX, cursorY);
+            } else {
+                return windowAtPointer(rightChild, cursorX, cursorY);
+            }
+        } else {
+            // Horizontal split: top and bottom children
+            const splitY = y + height * splitRatio;
+            if (cursorY < splitY) {
+                return windowAtPointer(leftChild, cursorX, cursorY);
+            } else {
+                return windowAtPointer(rightChild, cursorX, cursorY);
+            }
+        }
     }
 }

@@ -14,17 +14,25 @@ export default class GnomeRectanglePreferences extends ExtensionPreferences {
       iconName: 'dialog-information-symbolic',
     });
 
-    const animationGroup = new Adw.PreferencesGroup({
-      title: _('Animation'),
-      description: _('Configure move/resize animation'),
+    const generalGroup = new Adw.PreferencesGroup({
+      title: _('General'),
     });
-    page.add(animationGroup);
+    page.add(generalGroup);
 
-    const animationEnabled = new Adw.SwitchRow({
-      title: _('Enabled'),
-      subtitle: _('Wether to animate windows'),
+    const layout = new Adw.ComboRow({
+      title: _('Layout'),
+      subtitle: _('Which layout to choose'),
+      model: new Gtk.StringList({
+        strings: ["Dwindle", "Master"]
+      })
     });
-    animationGroup.add(animationEnabled);
+    generalGroup.add(layout);
+
+    const animate = new Adw.SwitchRow({
+      title: _('Animation'),
+      subtitle: _('Wether to animate windows move/resize'),
+    });
+    generalGroup.add(animate);
 
     const gapsGroup = new Adw.PreferencesGroup({
       title: _('Gaps'),
@@ -56,7 +64,8 @@ export default class GnomeRectanglePreferences extends ExtensionPreferences {
 
     window.add(page)
 
-    this._settings!.bind('animate', animationEnabled, 'active', Gio.SettingsBindFlags.DEFAULT);
+    this._settings!.bind('layout', layout, 'selected-item-gvariant', Gio.SettingsBindFlags.DEFAULT);
+    this._settings!.bind('animate', animate, 'active', Gio.SettingsBindFlags.DEFAULT);
     this._settings!.bind('gaps-in', gapsIn, 'value', Gio.SettingsBindFlags.DEFAULT);
     this._settings!.bind('gaps-out', gapsOut, 'value', Gio.SettingsBindFlags.DEFAULT);
 

@@ -1,96 +1,18 @@
 import Meta from "gi://Meta";
-import Shell from "gi://Shell";
-import Gio from "gi://Gio";
-import { Extension } from 'resource:///org/gnome/shell/extensions/extension.js';
 import {
     BspNode,
     createSplitNode,
     createWindowNode,
-    findNodeFromWindowHandle,
-    ISplitNode,
-    printBspTree,
-    IWindowNode,
+    findNodeFromWindowHandle, printBspTree, adjustSplitRatio,
+    windowAtPointer,
+    IGeometry,
+    IPoint
 } from "../util/bsp.js";
-import { IGeometry, IPoint, isPointInGeometry, keyOf, removeGaps, resizeWindow, windowFilter } from "../util/helpers.js";
-import { ConsoleLike } from "@girs/gnome-shell/extensions/extension";
+import { removeGaps, resizeWindow } from "../util/helpers.js";
+import { WindowManager } from "./wm.js";
 
-export default class WindowManager {
-    private static instances = new Map<string, WindowManager>();
-
-    public static push(window: Meta.Window, point?: IPoint): void {
-        if (!windowFilter(window)) return;
-        const key = keyOf(window);
-        let wm = this.instances.get(key);
-        if (!wm) {
-            wm = new WindowManager(key);
-            this.instances.set(key, wm);
-        }
-        wm.push(window, point);
-    }
-
-    public static pop(window: Meta.Window, key?: string): void {
-        if (key) {
-            let wm = this.instances.get(key);
-            if (!wm) {
-                console.debug(`No WindowManager instance found for ${key}, cannot pop window.`);
-                return;
-            }
-            return wm.pop(window);
-        }
-
-        for (const [key, wm] of this.instances) {
-            if (!wm.rootNode) continue;
-            if (findNodeFromWindowHandle(wm.rootNode, window)) {
-                wm.pop(window)
-                return;
-            }
-        }
-    }
-
-    public static resizeNeighbors(window: Meta.Window) {
-        const key = keyOf(window);
-        let wm = this.instances.get(key);
-        if (!wm) {
-            console.debug(`No WindowManager instance found for ${key}, cannot resize neighboring window.`);
-            return;
-        }
-        wm.resizeNeighbors(window);
-    }
-
-    private readonly key: string;
-    private readonly workspace: number;
-    private readonly monitor: number;
-    private rootNode: BspNode | null;
-    private readonly workArea: IGeometry;
-    private readonly logger: ConsoleLike;
-    private readonly settings: Gio.Settings;
-    private readonly defaultSplitRatio: number = 0.5;
-    private readonly minSplitRatio: number = 0.1;
-
-    constructor(key: string) {
-        this.key = key;
-        const [workspace, monitor] = key.split('-').map(Number);
-        this.workspace = workspace;
-        this.monitor = monitor;
-        this.rootNode = null;
-        this.workArea = this.getWorkArea();
-        const extension = Extension.lookupByUUID("hyprtile@topazrn.com")!;
-        this.logger = extension.getLogger()
-        this.settings = extension.getSettings();
-    }
-
-    private getWorkArea(): IGeometry {
-        const display = Shell.Global.get().display
-        const workspaceManager = display.get_workspace_manager();
-        const workspace = workspaceManager.get_workspace_by_index(this.workspace);
-        if (!workspace) {
-            this.logger.warn(`No workspace found for index ${this.workspace}`);
-            return { x: 0, y: 0, width: 0, height: 0 };
-        }
-        return workspace.get_work_area_for_monitor(this.monitor);
-    }
-
-    private push(newWindow: Meta.Window, point?: IPoint): void {
+export default class Dwindle extends WindowManager {
+    push(newWindow: Meta.Window, point?: IPoint): void {
         if (!this.rootNode) {
             const geometry = this.workArea;
             this.rootNode = createWindowNode(
@@ -122,7 +44,7 @@ export default class WindowManager {
         targetX = Math.clamp(targetX, this.workArea.x, this.workArea.x + this.workArea.width - 1);
         targetY = Math.clamp(targetY, this.workArea.y, this.workArea.y + this.workArea.height - 1);
 
-        let node = this.windowAtPointer(this.rootNode, targetX, targetY);
+        let node = windowAtPointer(this.rootNode, targetX, targetY);
         this.logger.log(`Pointer at (${targetX}, ${targetY})`);
         if (!node) return; // Already handled at the beginning of the function
 
@@ -212,7 +134,7 @@ export default class WindowManager {
         this.logger.log("");
     }
 
-    private pop(oldWindow: Meta.Window): void {
+    pop(oldWindow: Meta.Window): void {
         if (!this.rootNode) {
             this.logger.warn(`No root node exists for ${this.key}, cannot pop window.`);
             return;
@@ -268,8 +190,7 @@ export default class WindowManager {
 
     // Resize the descendants of the node recursively
     // Assuming that the geometry of the node is already set correctly
-    // This is used to resize the windows after a pop operation
-    private resizeChildren(node: BspNode): void {
+    resizeChildren(node: BspNode): void {
         if (node.type === 'window') {
             resizeWindow(node.windowHandle, node.geometry, this.workArea, this.settings);
             return;
@@ -308,7 +229,7 @@ export default class WindowManager {
         this.resizeChildren(node.rightChild);
     }
 
-    private resizeNeighbors(window: Meta.Window): void {
+    resizeNeighbors(window: Meta.Window): void {
         if (!this.rootNode) {
             this.logger.warn(`No root node exists for ${this.key}, cannot resize neighboring window.`);
             return;
@@ -337,13 +258,13 @@ export default class WindowManager {
 
         const newGeometry = removeGaps(window.get_frame_rect(), this.workArea, this.settings.get_int("gaps-in"), this.settings.get_int("gaps-out"));
 
-        this.adjustSplitRatio(node, node.parent, newGeometry);
+        adjustSplitRatio(node, node.parent, newGeometry, this.minSplitRatio);
 
         if (node.parent.parent?.type === 'split') {
             if (node.parent.parent.splitDirection === node.parent.splitDirection) {
                 this.resizeChildren(node.parent);
             } else {
-                this.adjustSplitRatio(node.parent, node.parent.parent, newGeometry);
+                adjustSplitRatio(node.parent, node.parent.parent, newGeometry, this.minSplitRatio);
                 this.resizeChildren(node.parent.parent);
             }
         } else {
@@ -353,62 +274,5 @@ export default class WindowManager {
         this.logger.log("");
         printBspTree(this.logger, this.rootNode, '  ');
         this.logger.log("");
-    }
-
-    private adjustSplitRatio(node: BspNode, parent: ISplitNode, newGeometry: IGeometry): void {
-        if (parent.splitDirection === 'vertical') {
-            if (parent.leftChild === node) {
-                parent.splitRatio = newGeometry.width / parent.geometry.width;
-            } else {
-                parent.splitRatio = (parent.geometry.width - newGeometry.width) / parent.geometry.width;
-            }
-        } else {
-            if (parent.leftChild === node) {
-                parent.splitRatio = (newGeometry.height) / parent.geometry.height;
-            } else {
-                parent.splitRatio = (parent.geometry.height - newGeometry.height) / parent.geometry.height;
-            }
-        }
-
-        if (parent.splitRatio > 1 - this.minSplitRatio || parent.splitRatio < this.minSplitRatio) {
-            this.logger.warn(`Split ratio ${parent.splitRatio} is out of bounds, clamping ratio.`);
-            parent.splitRatio = Math.clamp(parent.splitRatio, this.minSplitRatio, 1 - this.minSplitRatio);
-        }
-    }
-
-    private windowAtPointer(rootNode: BspNode, cursorX: number, cursorY: number): IWindowNode | null {
-        // If the cursor is not within the root node's geometry, no window can be found
-        if (!isPointInGeometry(cursorX, cursorY, rootNode.geometry)) {
-            return null;
-        }
-
-        if (rootNode.type === 'window') {
-            // If it's a window node, and the cursor is within its geometry, return it
-            return rootNode;
-        } else {
-            // If it's a split node, determine which child the cursor is in and recurse
-            const splitNode = rootNode; // Cast for type safety
-
-            const { x, y, width, height } = splitNode.geometry;
-            const { splitDirection, splitRatio, leftChild, rightChild } = splitNode;
-
-            if (splitDirection === 'vertical') {
-                // Vertical split: left and right children
-                const splitX = x + width * splitRatio;
-                if (cursorX < splitX) {
-                    return this.windowAtPointer(leftChild, cursorX, cursorY);
-                } else {
-                    return this.windowAtPointer(rightChild, cursorX, cursorY);
-                }
-            } else {
-                // Horizontal split: top and bottom children
-                const splitY = y + height * splitRatio;
-                if (cursorY < splitY) {
-                    return this.windowAtPointer(leftChild, cursorX, cursorY);
-                } else {
-                    return this.windowAtPointer(rightChild, cursorX, cursorY);
-                }
-            }
-        }
     }
 }

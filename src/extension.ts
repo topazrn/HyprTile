@@ -1,8 +1,8 @@
 import Meta from 'gi://Meta';
 import Shell from 'gi://Shell';
 import { Extension, ExtensionMetadata } from 'resource:///org/gnome/shell/extensions/extension.js';
-import WindowManager from './layout/dwindle.js';
-import { IPoint } from './util/helpers.js';
+import Dwindle from './layout/dwindle.js';
+import { IPoint } from './util/bsp.js';
 
 export default class MyExtension extends Extension {
   private connections: number[] = [];
@@ -18,7 +18,7 @@ export default class MyExtension extends Extension {
       const [pointerX, pointerY, mod] = this.shell.get_pointer();
       const point: IPoint = { x: pointerX, y: pointerY };
       if (windowMightNotShown.title) {
-        WindowManager.push(windowMightNotShown, point);
+        Dwindle.push(windowMightNotShown, point);
         return;
       }
 
@@ -29,14 +29,14 @@ export default class MyExtension extends Extension {
 
           const effectsCompleted = actor.connect_after("effects-completed", (_) => {
             actor.disconnect(effectsCompleted);
-            WindowManager.push(window, point);
+            Dwindle.push(window, point);
           })
         }
       );
 
       const windowChangedWorkspace = windowMightNotShown.connect_after("workspace-changed", (window) => {
-        WindowManager.pop(window);
-        WindowManager.push(window);
+        Dwindle.pop(window);
+        Dwindle.push(window);
       })
 
       const windowClosed = windowMightNotShown.connect_after("unmanaged", () => {
@@ -46,7 +46,7 @@ export default class MyExtension extends Extension {
     });
 
     const windowLeft = this.display.connect_after("window-left-monitor",
-      (display, _, window) => WindowManager.pop(window)
+      (display, _, window) => Dwindle.pop(window)
     );
 
     const windowGrabbed = this.display.connect_after("grab-op-begin",
@@ -56,7 +56,7 @@ export default class MyExtension extends Extension {
           operation === Meta.GrabOp.MOVING_UNCONSTRAINED ||
           operation === Meta.GrabOp.KEYBOARD_MOVING
         ) {
-          WindowManager.pop(window);
+          Dwindle.pop(window);
         }
       }
     );
@@ -68,7 +68,7 @@ export default class MyExtension extends Extension {
           operation === Meta.GrabOp.MOVING_UNCONSTRAINED ||
           operation === Meta.GrabOp.KEYBOARD_MOVING
         ) {
-          WindowManager.push(window);
+          Dwindle.push(window);
         }
 
         if (
@@ -93,7 +93,7 @@ export default class MyExtension extends Extension {
           // Resize neighbors after a short delay to allow the resize operation to complete
           // Incomplete resize operations can happen if the window is resized too quickly
           setTimeout(() => {
-            WindowManager.resizeNeighbors(window);
+            Dwindle.resizeNeighbors(window);
           }, 100);
         }
       }
@@ -105,7 +105,7 @@ export default class MyExtension extends Extension {
     this.connections.push(windowGrabbed);
 
     this.display.list_all_windows().forEach((window) => {
-      WindowManager.push(window);
+      Dwindle.push(window);
     });
   }
 

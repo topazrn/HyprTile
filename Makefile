@@ -16,6 +16,7 @@ schemas: src/schemas/*
 
 $(NAME).zip: dist/extension.js dist/prefs.js src/schemas/gschemas.compiled
 	@cp -r src/schemas dist/
+	@rm src/schemas/gschemas.compiled
 	@cp src/metadata.json dist/
 	@(cd dist && zip ../$(NAME).zip -9r .)
 

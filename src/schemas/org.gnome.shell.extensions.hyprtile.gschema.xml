@@ -1,6 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <schemalist>
   <schema id="org.gnome.shell.extensions.hyprtile" path="/org/gnome/shell/extensions/hyprtile/">
+    <key name="layout" type="s">
+      <default>'Dwindle'</default>
+      <summary>Layout</summary>
+      <description>Which layout to choose</description>
+      <choices>
+        <choice value="Dwindle" />
+        <choice value="Master" />
+      </choices>
+    </key>
+    <key name="animate" type="b">
+      <default>true</default>
+      <summary>Animation</summary>
+      <description>Whether to animate window movement/resizing</description>
+    </key>
     <key name="gaps-in" type="i">
       <default>5</default>
       <summary>Gaps In</summary>
@@ -10,11 +24,6 @@
       <default>20</default>
       <summary>Gaps Out</summary>
       <description>Gaps between windows and monitor edges</description>
-    </key>
-    <key name="animate" type="b">
-      <default>true</default>
-      <summary>Animation</summary>
-      <description>Whether to animate window movement/resizing</description>
     </key>
   </schema>
 </schemalist>
