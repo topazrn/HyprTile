@@ -17,15 +17,17 @@ export default class GnomeRectanglePreferences extends ExtensionPreferences {
     const generalGroup = new Adw.PreferencesGroup({
       title: _('General'),
     });
+
     page.add(generalGroup);
 
-    const layout = new Adw.ComboRow({
-      title: _('Layout'),
-      subtitle: _('Which layout to choose'),
-      model: new Gtk.StringList({
-        strings: ["Dwindle", "Master"]
-      })
+    const layout = new Adw.ActionRow({
+      title: 'Layout',
+      subtitle: 'Which layout to choose',
     });
+    const layoutToggle = new Adw.ToggleGroup({ valign: Gtk.Align.CENTER });
+    layoutToggle.add(new Adw.Toggle({ name: "dwindle", label: "Dwindle" }))
+    layoutToggle.add(new Adw.Toggle({ name: "master", label: "Master" }))
+    layout.add_suffix(layoutToggle);
     generalGroup.add(layout);
 
     const animate = new Adw.SwitchRow({
@@ -64,7 +66,7 @@ export default class GnomeRectanglePreferences extends ExtensionPreferences {
 
     window.add(page)
 
-    this._settings!.bind('layout', layout, 'selected-item-gvariant', Gio.SettingsBindFlags.DEFAULT);
+    this._settings!.bind('layout', layoutToggle, 'active-name', Gio.SettingsBindFlags.DEFAULT);
     this._settings!.bind('animate', animate, 'active', Gio.SettingsBindFlags.DEFAULT);
     this._settings!.bind('gaps-in', gapsIn, 'value', Gio.SettingsBindFlags.DEFAULT);
     this._settings!.bind('gaps-out', gapsOut, 'value', Gio.SettingsBindFlags.DEFAULT);

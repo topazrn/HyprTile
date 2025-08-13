@@ -2,12 +2,12 @@
 <schemalist>
   <schema id="org.gnome.shell.extensions.hyprtile" path="/org/gnome/shell/extensions/hyprtile/">
     <key name="layout" type="s">
-      <default>'Dwindle'</default>
+      <default>'dwindle'</default>
       <summary>Layout</summary>
       <description>Which layout to choose</description>
       <choices>
-        <choice value="Dwindle" />
-        <choice value="Master" />
+        <choice value="dwindle" />
+        <choice value="master" />
       </choices>
     </key>
     <key name="animate" type="b">
