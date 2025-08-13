@@ -78,6 +78,7 @@ export function resizeWindow(windowHandle: Meta.Window, newGeometry: IGeometry, 
 }
 
 export function simpleResizeWindow(windowHandle: Meta.Window, newGeometry: IGeometry) {
+    if (!windowHandle || !windowHandle.get_workspace()) return;
     if (windowHandle.maximizedHorizontally && windowHandle.maximizedVertically) {
         windowHandle.unmaximize(Meta.MaximizeFlags.BOTH);
     } else if (windowHandle.maximizedHorizontally) {
