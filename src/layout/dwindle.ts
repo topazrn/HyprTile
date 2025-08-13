@@ -11,40 +11,45 @@ import {
     printBspTree,
     IWindowNode,
 } from "../util/bsp.js";
-import { IGeometry, isPointInGeometry, removeGaps, resizeWindow, windowFilter } from "../util/helpers.js";
+import { IGeometry, isPointInGeometry, keyOf, removeGaps, resizeWindow, windowFilter } from "../util/helpers.js";
 import { ConsoleLike } from "@girs/gnome-shell/extensions/extension";
 
 export default class WindowManager {
     private static instances = new Map<string, WindowManager>();
 
-    private static getInstance(display: Meta.Display): [WindowManager | undefined, string] {
-        const workspace = display.get_workspace_manager().get_active_workspace().index();
-        const monitor = display.get_current_monitor();
-        const key = `${workspace}-${monitor}`;
-        return [this.instances.get(key), key];
-    }
-
-    public static push(display: Meta.Display, newWindow: Meta.Window, onPointer: boolean = true): void {
-        if (!windowFilter(newWindow)) return;
-        let [wm, key] = this.getInstance(display);
+    public static push(window: Meta.Window, onPointer: boolean = true): void {
+        if (!windowFilter(window)) return;
+        const key = keyOf(window);
+        let wm = this.instances.get(key);
         if (!wm) {
             wm = new WindowManager(key);
             this.instances.set(key, wm);
         }
-        wm.push(newWindow, onPointer);
+        wm.push(window, onPointer);
     }
 
-    public static pop(display: Meta.Display, oldWindow: Meta.Window): void {
-        let [wm, key] = this.getInstance(display);
-        if (!wm) {
-            console.debug(`No WindowManager instance found for ${key}, cannot pop window.`);
-            return;
+    public static pop(window: Meta.Window, key?: string): void {
+        if (key) {
+            let wm = this.instances.get(key);
+            if (!wm) {
+                console.debug(`No WindowManager instance found for ${key}, cannot pop window.`);
+                return;
+            }
+            return wm.pop(window);
         }
-        wm.pop(oldWindow);
+        
+        for (const [key, wm] of this.instances) {
+            if (!wm.rootNode) continue;
+            if (findNodeFromWindowHandle(wm.rootNode, window)) {
+                wm.pop(window)
+                return;
+            }
+        }
     }
 
-    public static resizeNeighbors(display: Meta.Display, window: Meta.Window) {
-        let [wm, key] = this.getInstance(display);
+    public static resizeNeighbors(window: Meta.Window) {
+        const key = keyOf(window);
+        let wm = this.instances.get(key);
         if (!wm) {
             console.debug(`No WindowManager instance found for ${key}, cannot resize neighboring window.`);
             return;
@@ -332,7 +337,7 @@ export default class WindowManager {
         }
 
         const newGeometry = removeGaps(window.get_frame_rect(), this.workArea, this.settings.get_int("gaps-in"), this.settings.get_int("gaps-out"));
-        
+
         this.adjustSplitRatio(node, node.parent, newGeometry);
 
         if (node.parent.parent?.type === 'split') {

@@ -5,57 +5,69 @@ import WindowManager from './layout/dwindle.js';
 
 export default class MyExtension extends Extension {
   private connections: number[] = [];
+  private display = Shell.Global.get().display;
 
   constructor(metadata: ExtensionMetadata) {
     super(metadata);
   }
 
   enable() {
-    const display = Shell.Global.get().display;
-
-    const windowEntered = display.connect("window-entered-monitor",
+    const windowEntered = this.display.connect_after("window-entered-monitor",
       (display, _, windowMightNotShown) => {
-        if (windowMightNotShown.title) return WindowManager.push(display, windowMightNotShown)
+        if (windowMightNotShown.title) {
+          WindowManager.push(windowMightNotShown);
+          return;
+        }
 
-        const windowShown = windowMightNotShown.connect("shown",
+        const windowShown = windowMightNotShown.connect_after("shown",
           (window) => {
             windowMightNotShown.disconnect(windowShown);
             const actor: Meta.WindowActor = window.get_compositor_private();
-            if (!actor) return WindowManager.push(display, window);
 
-            const effectsCompleted = actor.connect("effects-completed", (_) => {
+            const effectsCompleted = actor.connect_after("effects-completed", (_) => {
               actor.disconnect(effectsCompleted);
-              WindowManager.push(display, window);
+              WindowManager.push(window);
             })
           }
         );
+
+        const windowChangedWorkspace = windowMightNotShown.connect_after("workspace-changed", (window) => {
+          WindowManager.pop(window);
+          WindowManager.push(window);
+        })
+
+        const windowClosed = windowMightNotShown.connect_after("unmanaged", () => {
+          windowMightNotShown.disconnect(windowChangedWorkspace);
+          windowMightNotShown.disconnect(windowClosed);
+        })
       }
     );
 
-    const windowLeft = display.connect("window-left-monitor",
-      (display, _, window) => WindowManager.pop(display, window)
+
+    const windowLeft = this.display.connect_after("window-left-monitor",
+      (display, _, window) => WindowManager.pop(window)
     );
 
-    const windowGrabbed = display.connect("grab-op-begin",
+    const windowGrabbed = this.display.connect_after("grab-op-begin",
       (display, window, operation) => {
         if (
           operation === Meta.GrabOp.MOVING ||
           operation === Meta.GrabOp.MOVING_UNCONSTRAINED ||
           operation === Meta.GrabOp.KEYBOARD_MOVING
         ) {
-          WindowManager.pop(display, window);
+          WindowManager.pop(window);
         }
       }
     );
 
-    const windowReleased = display.connect("grab-op-end",
+    const windowReleased = this.display.connect_after("grab-op-end",
       (display, window, operation) => {
         if (
           operation === Meta.GrabOp.MOVING ||
           operation === Meta.GrabOp.MOVING_UNCONSTRAINED ||
           operation === Meta.GrabOp.KEYBOARD_MOVING
         ) {
-          WindowManager.push(display, window, false);
+          WindowManager.push(window, false);
         }
 
         if (
@@ -80,7 +92,7 @@ export default class MyExtension extends Extension {
           // Resize neighbors after a short delay to allow the resize operation to complete
           // Incomplete resize operations can happen if the window is resized too quickly
           setTimeout(() => {
-            WindowManager.resizeNeighbors(display, window);
+            WindowManager.resizeNeighbors(window);
           }, 100);
         }
       }
@@ -91,8 +103,8 @@ export default class MyExtension extends Extension {
     this.connections.push(windowReleased);
     this.connections.push(windowGrabbed);
 
-    display.list_all_windows().forEach((window) => {
-      WindowManager.push(display, window);
+    this.display.list_all_windows().forEach((window) => {
+      WindowManager.push(window);
     });
   }
 

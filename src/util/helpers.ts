@@ -161,3 +161,7 @@ export function windowFilter(window: Meta.Window): boolean {
 
     return true;
 }
+
+export function keyOf(window: Meta.Window): string {
+    return `${window.get_workspace()}-${window.get_monitor()}`;
+}
