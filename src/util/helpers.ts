@@ -146,9 +146,18 @@ export function removeGaps(geometry: IGeometry, workArea: IGeometry, gapsIn: num
 }
 
 export function windowFilter(window: Meta.Window): boolean {
-    if (window.windowType !== Meta.WindowType.NORMAL) return false;
-    if (window.get_transient_for()) return false;
-    if (window.is_on_all_workspaces()) return false;
+    if (window.windowType !== Meta.WindowType.NORMAL) {
+        console.debug(`Window Filter: window ${window.title} type is ${window.windowType}.`);
+        return false;
+    }
+    if (window.get_transient_for()) {
+        console.debug(`Window Filter: window ${window.title} is transient.`);
+        return false;
+    }
+    if (window.is_on_all_workspaces()) {
+        console.debug(`Window Filter: window ${window.title} is on all workspaces.`);
+        return false;
+    }
 
     return true;
 }

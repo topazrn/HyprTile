@@ -37,8 +37,7 @@ export default class WindowManager {
     public static pop(display: Meta.Display, oldWindow: Meta.Window): void {
         let [wm, key] = this.getInstance(display);
         if (!wm) {
-            const logger = Extension.lookupByUUID("hyprtile@topazrn.com")!.getLogger()
-            logger.warn(`No WindowManager instance found for ${key}, cannot pop window.`);
+            console.debug(`No WindowManager instance found for ${key}, cannot pop window.`);
             return;
         }
         wm.pop(oldWindow);
@@ -47,8 +46,7 @@ export default class WindowManager {
     public static resizeNeighbors(display: Meta.Display, window: Meta.Window) {
         let [wm, key] = this.getInstance(display);
         if (!wm) {
-            const logger = Extension.lookupByUUID("hyprtile@topazrn.com")!.getLogger()
-            logger.warn(`No WindowManager instance found for ${key}, cannot resize neighboring window.`);
+            console.debug(`No WindowManager instance found for ${key}, cannot resize neighboring window.`);
             return;
         }
         wm.resizeNeighbors(window);
