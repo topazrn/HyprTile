@@ -32,7 +32,7 @@ export default class GnomeRectanglePreferences extends ExtensionPreferences {
 
     const animate = new Adw.SwitchRow({
       title: _('Animation'),
-      subtitle: _('Wether to animate windows move/resize'),
+      subtitle: _('Whether to animate windows move/resize'),
     });
     generalGroup.add(animate);
 
