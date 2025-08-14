@@ -58,7 +58,9 @@ export function resizeWindow(windowHandle: Meta.Window, newGeometry: IGeometry, 
 
 export function simpleResizeWindow(windowHandle: Meta.Window, newGeometry: IGeometry) {
     if (!windowHandle || !windowHandle.get_workspace()) return;
-    if (windowHandle.maximizedHorizontally && windowHandle.maximizedVertically) {
+    if (windowHandle.fullscreen) {
+        windowHandle.unmake_fullscreen();
+    } else if (windowHandle.maximizedHorizontally && windowHandle.maximizedVertically) {
         windowHandle.unmaximize(Meta.MaximizeFlags.BOTH);
     } else if (windowHandle.maximizedHorizontally) {
         windowHandle.unmaximize(Meta.MaximizeFlags.HORIZONTAL);
@@ -138,8 +140,12 @@ export function windowFilter(window: Meta.Window): boolean {
         console.debug(`Window Filter: window ${window.title} is transient.`);
         return false;
     }
-    if (window.is_on_all_workspaces()) {
+    if (window.onAllWorkspaces) {
         console.debug(`Window Filter: window ${window.title} is on all workspaces.`);
+        return false;
+    }
+    if (!window.resizeable) {
+        console.debug(`Window Filter: window ${window.title} is not resizable.`);
         return false;
     }
 
