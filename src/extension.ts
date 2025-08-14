@@ -17,6 +17,17 @@ export default class MyExtension extends Extension {
     const windowEntered = this.display.connect_after("window-entered-monitor", (display, _, windowMightNotShown) => {
       const [pointerX, pointerY, mod] = this.shell.get_pointer();
       const point: IPoint = { x: pointerX, y: pointerY };
+
+      const windowChangedWorkspace = windowMightNotShown.connect_after("workspace-changed", (window) => {
+        Dwindle.pop(window);
+        Dwindle.push(window);
+      });
+
+      const windowClosed = windowMightNotShown.connect_after("unmanaged", () => {
+        windowMightNotShown.disconnect(windowChangedWorkspace);
+        windowMightNotShown.disconnect(windowClosed);
+      });
+
       if (windowMightNotShown.title) {
         Dwindle.push(windowMightNotShown, point);
         return;
@@ -33,16 +44,6 @@ export default class MyExtension extends Extension {
           })
         }
       );
-
-      const windowChangedWorkspace = windowMightNotShown.connect_after("workspace-changed", (window) => {
-        Dwindle.pop(window);
-        Dwindle.push(window);
-      })
-
-      const windowClosed = windowMightNotShown.connect_after("unmanaged", () => {
-        windowMightNotShown.disconnect(windowChangedWorkspace);
-        windowMightNotShown.disconnect(windowClosed);
-      })
     });
 
     const windowLeft = this.display.connect_after("window-left-monitor",
