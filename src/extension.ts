@@ -5,7 +5,7 @@ import Dwindle from './layout/dwindle.js';
 import { IPoint } from './util/bsp.js';
 
 export default class MyExtension extends Extension {
-  private connections: number[] = [];
+  private connections: Function[] = [];
   private shell = Shell.Global.get();
   private display = this.shell.display;
 
@@ -22,11 +22,13 @@ export default class MyExtension extends Extension {
         Dwindle.pop(window);
         Dwindle.push(window);
       });
+      this.connections.push(() => windowMightNotShown.disconnect(windowChangedWorkspace));
 
       const windowClosed = windowMightNotShown.connect_after("unmanaged", () => {
         windowMightNotShown.disconnect(windowChangedWorkspace);
         windowMightNotShown.disconnect(windowClosed);
       });
+      this.connections.push(() => windowMightNotShown.disconnect(windowClosed));
 
       if (windowMightNotShown.title) {
         Dwindle.push(windowMightNotShown, point);
@@ -42,13 +44,17 @@ export default class MyExtension extends Extension {
             actor.disconnect(effectsCompleted);
             Dwindle.push(window, point);
           })
+          this.connections.push(() => actor.disconnect(effectsCompleted));
         }
       );
+      this.connections.push(() => windowMightNotShown.disconnect(windowShown));
     });
+    this.connections.push(() => this.display.disconnect(windowEntered));
 
     const windowLeft = this.display.connect_after("window-left-monitor",
       (_display, _, window) => Dwindle.pop(window)
     );
+    this.connections.push(() => this.display.disconnect(windowLeft));
 
     const windowGrabbed = this.display.connect_after("grab-op-begin",
       (_display, window, operation) => {
@@ -61,6 +67,7 @@ export default class MyExtension extends Extension {
         }
       }
     );
+    this.connections.push(() => this.display.disconnect(windowGrabbed));
 
     const windowReleased = this.display.connect_after("grab-op-end",
       (_display, window, operation) => {
@@ -99,11 +106,7 @@ export default class MyExtension extends Extension {
         }
       }
     );
-
-    this.connections.push(windowEntered);
-    this.connections.push(windowLeft);
-    this.connections.push(windowReleased);
-    this.connections.push(windowGrabbed);
+    this.connections.push(() => this.display.disconnect(windowReleased));
 
     this.display.list_all_windows().forEach((window) => {
       Dwindle.push(window);
@@ -111,10 +114,8 @@ export default class MyExtension extends Extension {
   }
 
   disable() {
-    const display = Shell.Global.get().display;
-    this.connections.forEach((connection) => {
-      display.disconnect(connection);
-    });
-    this.connections = [];
+    while (this.connections.length > 0) {
+      this.connections.pop()!();
+    }
   }
 }
