@@ -14,8 +14,8 @@ export default class MyExtension extends Extension {
   }
 
   enable() {
-    const windowEntered = this.display.connect_after("window-entered-monitor", (display, _, windowMightNotShown) => {
-      const [pointerX, pointerY, mod] = this.shell.get_pointer();
+    const windowEntered = this.display.connect_after("window-entered-monitor", (_display, _, windowMightNotShown) => {
+      const [pointerX, pointerY] = this.shell.get_pointer();
       const point: IPoint = { x: pointerX, y: pointerY };
 
       const windowChangedWorkspace = windowMightNotShown.connect_after("workspace-changed", (window) => {
@@ -47,11 +47,11 @@ export default class MyExtension extends Extension {
     });
 
     const windowLeft = this.display.connect_after("window-left-monitor",
-      (display, _, window) => Dwindle.pop(window)
+      (_display, _, window) => Dwindle.pop(window)
     );
 
     const windowGrabbed = this.display.connect_after("grab-op-begin",
-      (display, window, operation) => {
+      (_display, window, operation) => {
         if (
           operation === Meta.GrabOp.MOVING ||
           operation === Meta.GrabOp.MOVING_UNCONSTRAINED ||
@@ -63,7 +63,7 @@ export default class MyExtension extends Extension {
     );
 
     const windowReleased = this.display.connect_after("grab-op-end",
-      (display, window, operation) => {
+      (_display, window, operation) => {
         if (
           operation === Meta.GrabOp.MOVING ||
           operation === Meta.GrabOp.MOVING_UNCONSTRAINED ||
