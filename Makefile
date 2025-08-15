@@ -31,4 +31,4 @@ clean:
 	@rm -rf dist node_modules $(NAME).zip
 
 dev:
-	MUTTER_DEBUG_DUMMY_MODE_SPECS=1920x1080 dbus-run-session -- gnome-shell --nested --wayland
+	MUTTER_DEBUG_DUMMY_MODE_SPECS=1920x1080 G_MESSAGES_DEBUG="GNOME Shell" dbus-run-session -- gnome-shell --nested --wayland
