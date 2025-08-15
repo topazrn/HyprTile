@@ -14,13 +14,6 @@ export function resizeWindow(windowHandle: Meta.Window, newGeometry: IGeometry, 
 
     const gappedNewGeometry = addGaps(newGeometry, workArea, gapsIn, gapsOut);
     const gappedOldGeometry: IGeometry = windowHandle.get_frame_rect();
-    if (
-        gappedOldGeometry.x === gappedNewGeometry.x &&
-        gappedOldGeometry.y === gappedNewGeometry.y &&
-        gappedOldGeometry.width === gappedNewGeometry.width &&
-        gappedOldGeometry.height === gappedNewGeometry.height
-    ) return;
-
     const actor: Meta.WindowActor | null = windowHandle.get_compositor_private();
 
     if (!animate || !actor) {
@@ -74,18 +67,7 @@ export function simpleResizeWindow(windowHandle: Meta.Window, newGeometry: IGeom
 
     const geometry = windowHandle.get_frame_rect();
 
-    if (geometry.width === newGeometry.width && geometry.height === newGeometry.height) {
-        const onComplete = windowHandle.connect_after("position-changed", () => {
-            windowHandle.disconnect(onComplete);
-            callback!();
-        });
-
-        windowHandle.move_frame(
-            true,
-            newGeometry.x,
-            newGeometry.y
-        )
-    } else {
+    if (geometry.width !== newGeometry.width || geometry.height !== newGeometry.height) {
         const onComplete = windowHandle.connect_after("size-changed", () => {
             windowHandle.disconnect(onComplete);
             callback!();
@@ -98,7 +80,24 @@ export function simpleResizeWindow(windowHandle: Meta.Window, newGeometry: IGeom
             newGeometry.width,
             newGeometry.height
         );
+        return;
     }
+
+    if (geometry.x !== newGeometry.x || geometry.y !== newGeometry.y) {
+        const onComplete = windowHandle.connect_after("position-changed", () => {
+            windowHandle.disconnect(onComplete);
+            callback!();
+        });
+
+        windowHandle.move_frame(
+            true,
+            newGeometry.x,
+            newGeometry.y
+        )
+        return;
+    }
+
+    callback!();
 }
 
 // Assuming geometry not gapped
