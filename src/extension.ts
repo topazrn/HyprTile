@@ -54,8 +54,7 @@ export default class MyExtension extends Extension {
 
     const windowLeft = this.display.connect_after("window-left-monitor", (_display, _, window) => {
       Dwindle.pop(window);
-    }
-    );
+    });
     this.connections.push(() => this.display.disconnect(windowLeft));
 
     const windowGrabbed = this.display.connect_after("grab-op-begin", (_display, window, operation) => {
@@ -66,8 +65,7 @@ export default class MyExtension extends Extension {
       ) {
         Dwindle.pop(window);
       }
-    }
-    );
+    });
     this.connections.push(() => this.display.disconnect(windowGrabbed));
 
     const windowReleased = this.display.connect_after("grab-op-end", (_display, window, operation) => {
@@ -76,10 +74,7 @@ export default class MyExtension extends Extension {
         operation === Meta.GrabOp.MOVING_UNCONSTRAINED ||
         operation === Meta.GrabOp.KEYBOARD_MOVING
       ) {
-        const positionChanged = window.connect_after("position-changed", () => {
-          window.disconnect(positionChanged);
-          Dwindle.push(window);
-        });
+        Dwindle.push(window);
       }
 
       if (
@@ -106,8 +101,7 @@ export default class MyExtension extends Extension {
           Dwindle.resizeNeighbors(window);
         });
       }
-    }
-    );
+    });
     this.connections.push(() => this.display.disconnect(windowReleased));
 
     this.display.list_all_windows().forEach((window) => {
