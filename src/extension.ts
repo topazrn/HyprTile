@@ -19,6 +19,8 @@ export default class MyExtension extends Extension {
       const point: IPoint = { x: pointerX, y: pointerY };
 
       const windowChangedWorkspace = windowMightNotShown.connect_after("workspace-changed", (window) => {
+        // This event also fires when the window is closed
+        if (!windowMightNotShown || !windowMightNotShown.get_workspace()) return;
         Dwindle.pop(window);
         Dwindle.push(window);
       });
@@ -35,78 +37,76 @@ export default class MyExtension extends Extension {
         return;
       }
 
-      const windowShown = windowMightNotShown.connect_after("shown",
-        (window) => {
-          windowMightNotShown.disconnect(windowShown);
-          const actor: Meta.WindowActor = window.get_compositor_private();
+      const windowShown = windowMightNotShown.connect_after("shown", (window) => {
+        windowMightNotShown.disconnect(windowShown);
+        const actor: Meta.WindowActor = window.get_compositor_private();
 
-          const effectsCompleted = actor.connect_after("effects-completed", (_) => {
-            actor.disconnect(effectsCompleted);
-            Dwindle.push(window, point);
-          })
-          this.connections.push(() => actor.disconnect(effectsCompleted));
-        }
+        const effectsCompleted = actor.connect_after("effects-completed", (_) => {
+          actor.disconnect(effectsCompleted);
+          Dwindle.push(window, point);
+        })
+        this.connections.push(() => actor.disconnect(effectsCompleted));
+      }
       );
       this.connections.push(() => windowMightNotShown.disconnect(windowShown));
     });
     this.connections.push(() => this.display.disconnect(windowEntered));
 
-    const windowLeft = this.display.connect_after("window-left-monitor",
-      (_display, _, window) => Dwindle.pop(window)
+    const windowLeft = this.display.connect_after("window-left-monitor", (_display, _, window) => {
+      Dwindle.pop(window);
+    }
     );
     this.connections.push(() => this.display.disconnect(windowLeft));
 
-    const windowGrabbed = this.display.connect_after("grab-op-begin",
-      (_display, window, operation) => {
-        if (
-          operation === Meta.GrabOp.MOVING ||
-          operation === Meta.GrabOp.MOVING_UNCONSTRAINED ||
-          operation === Meta.GrabOp.KEYBOARD_MOVING
-        ) {
-          Dwindle.pop(window);
-        }
+    const windowGrabbed = this.display.connect_after("grab-op-begin", (_display, window, operation) => {
+      if (
+        operation === Meta.GrabOp.MOVING ||
+        operation === Meta.GrabOp.MOVING_UNCONSTRAINED ||
+        operation === Meta.GrabOp.KEYBOARD_MOVING
+      ) {
+        Dwindle.pop(window);
       }
+    }
     );
     this.connections.push(() => this.display.disconnect(windowGrabbed));
 
-    const windowReleased = this.display.connect_after("grab-op-end",
-      (_display, window, operation) => {
-        if (
-          operation === Meta.GrabOp.MOVING ||
-          operation === Meta.GrabOp.MOVING_UNCONSTRAINED ||
-          operation === Meta.GrabOp.KEYBOARD_MOVING
-        ) {
-          const positionChanged = window.connect_after("position-changed", () => {
-            window.disconnect(positionChanged);
-            Dwindle.push(window);
-          });
-        }
-
-        if (
-          operation === Meta.GrabOp.RESIZING_NW ||
-          operation === Meta.GrabOp.RESIZING_N ||
-          operation === Meta.GrabOp.RESIZING_NE ||
-          operation === Meta.GrabOp.RESIZING_E ||
-          operation === Meta.GrabOp.RESIZING_SW ||
-          operation === Meta.GrabOp.RESIZING_S ||
-          operation === Meta.GrabOp.RESIZING_SE ||
-          operation === Meta.GrabOp.RESIZING_W ||
-          operation === Meta.GrabOp.KEYBOARD_RESIZING_UNKNOWN ||
-          operation === Meta.GrabOp.KEYBOARD_RESIZING_NW ||
-          operation === Meta.GrabOp.KEYBOARD_RESIZING_N ||
-          operation === Meta.GrabOp.KEYBOARD_RESIZING_NE ||
-          operation === Meta.GrabOp.KEYBOARD_RESIZING_E ||
-          operation === Meta.GrabOp.KEYBOARD_RESIZING_SW ||
-          operation === Meta.GrabOp.KEYBOARD_RESIZING_S ||
-          operation === Meta.GrabOp.KEYBOARD_RESIZING_SE ||
-          operation === Meta.GrabOp.KEYBOARD_RESIZING_W
-        ) {
-          const sizeChanged = window.connect_after("size-changed", () => {
-            window.disconnect(sizeChanged);
-            Dwindle.resizeNeighbors(window);
-          });
-        }
+    const windowReleased = this.display.connect_after("grab-op-end", (_display, window, operation) => {
+      if (
+        operation === Meta.GrabOp.MOVING ||
+        operation === Meta.GrabOp.MOVING_UNCONSTRAINED ||
+        operation === Meta.GrabOp.KEYBOARD_MOVING
+      ) {
+        const positionChanged = window.connect_after("position-changed", () => {
+          window.disconnect(positionChanged);
+          Dwindle.push(window);
+        });
       }
+
+      if (
+        operation === Meta.GrabOp.RESIZING_NW ||
+        operation === Meta.GrabOp.RESIZING_N ||
+        operation === Meta.GrabOp.RESIZING_NE ||
+        operation === Meta.GrabOp.RESIZING_E ||
+        operation === Meta.GrabOp.RESIZING_SW ||
+        operation === Meta.GrabOp.RESIZING_S ||
+        operation === Meta.GrabOp.RESIZING_SE ||
+        operation === Meta.GrabOp.RESIZING_W ||
+        operation === Meta.GrabOp.KEYBOARD_RESIZING_UNKNOWN ||
+        operation === Meta.GrabOp.KEYBOARD_RESIZING_NW ||
+        operation === Meta.GrabOp.KEYBOARD_RESIZING_N ||
+        operation === Meta.GrabOp.KEYBOARD_RESIZING_NE ||
+        operation === Meta.GrabOp.KEYBOARD_RESIZING_E ||
+        operation === Meta.GrabOp.KEYBOARD_RESIZING_SW ||
+        operation === Meta.GrabOp.KEYBOARD_RESIZING_S ||
+        operation === Meta.GrabOp.KEYBOARD_RESIZING_SE ||
+        operation === Meta.GrabOp.KEYBOARD_RESIZING_W
+      ) {
+        const sizeChanged = window.connect_after("size-changed", () => {
+          window.disconnect(sizeChanged);
+          Dwindle.resizeNeighbors(window);
+        });
+      }
+    }
     );
     this.connections.push(() => this.display.disconnect(windowReleased));
 
