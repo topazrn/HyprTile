@@ -1,4 +1,3 @@
-import { ConsoleLike } from "@girs/gnome-shell/extensions/extension";
 import Meta from "gi://Meta";
 
 export interface IPoint {
@@ -147,18 +146,18 @@ export function findNodeFromWindowHandle(rootNode: BspNode, targetWindowHandle: 
  * @param node The current node to print.
  * @param indent The current indentation level (for visual hierarchy).
  */
-export function printBspTree(logger: ConsoleLike, node: BspNode, indent: string = ''): void {
+export function printBspTree(node: BspNode, indent: string = ''): void {
     if (!node) {
         return;
     }
 
     if (node.type === 'window') {
-        logger.log(`${indent}Window Node (Title: ${node.windowHandle.title} ${node.windowHandle.get_pid()}) - Geo: (${node.geometry.x},${node.geometry.y},${node.geometry.width},${node.geometry.height})`);
+        console.debug(`${indent}Window Node (Title: ${node.windowHandle.title} ${node.windowHandle.get_pid()}) - Geo: (${node.geometry.x},${node.geometry.y},${node.geometry.width},${node.geometry.height})`);
     } else {
         const splitNode = node as ISplitNode;
-        logger.log(`${indent}Split Node (Direction: ${splitNode.splitDirection}, Ratio: ${splitNode.splitRatio}) - Geo: (${node.geometry.x},${node.geometry.y},${node.geometry.width},${node.geometry.height})`);
-        printBspTree(logger, splitNode.leftChild, indent + '  ├── ');
-        printBspTree(logger, splitNode.rightChild, indent + '  └── ');
+        console.debug(`${indent}Split Node (Direction: ${splitNode.splitDirection}, Ratio: ${splitNode.splitRatio}) - Geo: (${node.geometry.x},${node.geometry.y},${node.geometry.width},${node.geometry.height})`);
+        printBspTree(splitNode.leftChild, indent + '  ├── ');
+        printBspTree(splitNode.rightChild, indent + '  └── ');
     }
 }
 

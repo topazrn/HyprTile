@@ -27,7 +27,7 @@ export default class Dwindle extends WindowManager {
         if (findNodeFromWindowHandle(this.rootNode, newWindow)) {
             // This happens when GNOME Shell resumes after a suspend.
             // In this case, we should not push the window again.
-            this.logger.warn(`Window ${newWindow.title} already exists in workspace ${this.workspace}, monitor ${this.monitor}.`);
+            console.debug(`Window ${newWindow.title} already exists in workspace ${this.workspace}, monitor ${this.monitor}.`);
             return;
         }
 
@@ -45,7 +45,7 @@ export default class Dwindle extends WindowManager {
         targetY = Math.clamp(targetY, this.workArea.y, this.workArea.y + this.workArea.height - 1);
 
         let node = windowAtPointer(this.rootNode, targetX, targetY);
-        this.logger.log(`Pointer at (${targetX}, ${targetY})`);
+        console.debug(`Pointer at (${targetX}, ${targetY})`);
         if (!node) return; // Already handled at the beginning of the function
 
         const isHorizontal = node.geometry.width > node.geometry.height; // Determine split direction based on geometry aspect ratio
@@ -113,7 +113,7 @@ export default class Dwindle extends WindowManager {
             this.rootNode = parent;
         } else {
             if (node.parent.type === 'window') {
-                this.logger.warn(`A window node don't have children, so idk how you can get this error.`);
+                console.debug(`A window node don't have children, so idk how you can get this error.`);
                 return;
             }
 
@@ -129,20 +129,20 @@ export default class Dwindle extends WindowManager {
 
         this.resizeChildren(parent); // Resize the children of the new split node
 
-        this.logger.log("");
-        printBspTree(this.logger, this.rootNode, '  ');
-        this.logger.log("");
+        console.debug("");
+        printBspTree(this.rootNode, '  ');
+        console.debug("");
     }
 
     pop(oldWindow: Meta.Window): void {
         if (!this.rootNode) {
-            this.logger.warn(`No root node exists for ${this.key}, cannot pop window.`);
+            console.debug(`No root node exists for ${this.key}, cannot pop window.`);
             return;
         }
 
         const node = findNodeFromWindowHandle(this.rootNode, oldWindow);
         if (!node) {
-            this.logger.warn(`No node found for window ${oldWindow.title} in workspace ${this.workspace}, monitor ${this.monitor}.`);
+            console.debug(`No node found for window ${oldWindow.title} in workspace ${this.workspace}, monitor ${this.monitor}.`);
             return;
         }
 
@@ -152,7 +152,7 @@ export default class Dwindle extends WindowManager {
         }
 
         if (node.parent.type === 'window') {
-            this.logger.warn(`Cannot pop a window node that is a child of another window node.`);
+            console.debug(`Cannot pop a window node that is a child of another window node.`);
             return;
         }
 
@@ -183,9 +183,9 @@ export default class Dwindle extends WindowManager {
 
         this.resizeChildren(remainingChild); // Resize the children of the remaining node
 
-        this.logger.log("");
-        printBspTree(this.logger, this.rootNode, '  ');
-        this.logger.log("");
+        console.debug("");
+        printBspTree(this.rootNode, '  ');
+        console.debug("");
     }
 
     // Resize the descendants of the node recursively
@@ -231,28 +231,28 @@ export default class Dwindle extends WindowManager {
 
     resizeNeighbors(window: Meta.Window): void {
         if (!this.rootNode) {
-            this.logger.warn(`No root node exists for ${this.key}, cannot resize neighboring window.`);
+            console.debug(`No root node exists for ${this.key}, cannot resize neighboring window.`);
             return;
         }
 
         const node = findNodeFromWindowHandle(this.rootNode, window)
         if (!node) {
-            this.logger.warn(`No node found for window ${window.title} in workspace ${this.workspace}, monitor ${this.monitor}.`);
+            console.debug(`No node found for window ${window.title} in workspace ${this.workspace}, monitor ${this.monitor}.`);
             return;
         }
 
         if (node.type !== 'window') {
-            this.logger.warn(`Cannot resize neighbors of a non-window node.`);
+            console.debug(`Cannot resize neighbors of a non-window node.`);
             return;
         }
 
         if (!node.parent) {
-            this.logger.warn(`Cannot resize neighbors of a root node.`);
+            console.debug(`Cannot resize neighbors of a root node.`);
             return;
         }
 
         if (node.parent.type === 'window') {
-            this.logger.warn(`A window node don't have children, so idk how you can get this error.`);
+            console.debug(`A window node don't have children, so idk how you can get this error.`);
             return;
         }
 
@@ -271,8 +271,8 @@ export default class Dwindle extends WindowManager {
             this.resizeChildren(node.parent);
         }
 
-        this.logger.log("");
-        printBspTree(this.logger, this.rootNode, '  ');
-        this.logger.log("");
+        console.debug("");
+        printBspTree(this.rootNode, '  ');
+        console.debug("");
     }
 }

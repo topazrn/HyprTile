@@ -3,7 +3,7 @@ import Meta from "gi://Meta";
 import Gio from "gi://Gio";
 import { keyOf, windowFilter } from "../util/helpers.js";
 import { BspNode, findNodeFromWindowHandle, IGeometry, IPoint } from "../util/bsp.js";
-import { ConsoleLike, Extension } from "resource:///org/gnome/shell/extensions/extension.js";
+import { Extension } from "resource:///org/gnome/shell/extensions/extension.js";
 
 export class WindowManager {
     private static instances = new Map<string, WindowManager>();
@@ -53,7 +53,6 @@ export class WindowManager {
     readonly monitor: number;
     rootNode: BspNode | null;
     readonly workArea: IGeometry;
-    readonly logger: ConsoleLike;
     readonly settings: Gio.Settings;
     readonly defaultSplitRatio: number = 0.5;
     readonly minSplitRatio: number = 0.1;
@@ -66,7 +65,6 @@ export class WindowManager {
         this.rootNode = null;
         this.workArea = this.getWorkArea();
         const extension = Extension.lookupByUUID("hyprtile@topazrn.com")!;
-        this.logger = extension.getLogger()
         this.settings = extension.getSettings();
     }
 
@@ -75,7 +73,7 @@ export class WindowManager {
         const workspaceManager = display.get_workspace_manager();
         const workspace = workspaceManager.get_workspace_by_index(this.workspace);
         if (!workspace) {
-            this.logger.warn(`No workspace found for index ${this.workspace}`);
+            console.warn(`No workspace found for index ${this.workspace}`);
             return { x: 0, y: 0, width: 0, height: 0 };
         }
         return workspace.get_work_area_for_monitor(this.monitor);
@@ -92,7 +90,7 @@ export class WindowManager {
     resizeChildren(node: BspNode): void {
         throw new Error("Must be implemented in the subclass.");
     }
-    
+
     resizeNeighbors(window: Meta.Window): void {
         throw new Error("Must be implemented in the subclass.");
     }
