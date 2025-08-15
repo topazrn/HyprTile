@@ -76,7 +76,10 @@ export default class MyExtension extends Extension {
           operation === Meta.GrabOp.MOVING_UNCONSTRAINED ||
           operation === Meta.GrabOp.KEYBOARD_MOVING
         ) {
-          Dwindle.push(window);
+          const positionChanged = window.connect_after("position-changed", () => {
+            window.disconnect(positionChanged);
+            Dwindle.push(window);
+          });
         }
 
         if (
@@ -98,11 +101,10 @@ export default class MyExtension extends Extension {
           operation === Meta.GrabOp.KEYBOARD_RESIZING_SE ||
           operation === Meta.GrabOp.KEYBOARD_RESIZING_W
         ) {
-          // Resize neighbors after a short delay to allow the resize operation to complete
-          // Incomplete resize operations can happen if the window is resized too quickly
-          setTimeout(() => {
+          const sizeChanged = window.connect_after("size-changed", () => {
+            window.disconnect(sizeChanged);
             Dwindle.resizeNeighbors(window);
-          }, 100);
+          });
         }
       }
     );
