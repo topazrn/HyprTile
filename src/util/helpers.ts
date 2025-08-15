@@ -3,11 +3,14 @@ import Clutter from "gi://Clutter";
 import Gio from "gi://Gio";
 import { IGeometry } from "./bsp.js";
 import { EasingParamsWithProperties } from "@girs/gnome-shell/extensions/global";
+import { easeActor } from "./easer.js";
 
 export function resizeWindow(windowHandle: Meta.Window, newGeometry: IGeometry, workArea: IGeometry, settings: Gio.Settings): void {
     const animate = settings.get_boolean("animate");
     const gapsIn = settings.get_int("gaps-in")
     const gapsOut = settings.get_int("gaps-out")
+
+    console.debug(`Resize window called on ${windowHandle.title} (${windowHandle.get_pid()})`)
 
     const gappedNewGeometry = addGaps(newGeometry, workArea, gapsIn, gapsOut);
     const gappedOldGeometry: IGeometry = windowHandle.get_frame_rect();
@@ -25,38 +28,39 @@ export function resizeWindow(windowHandle: Meta.Window, newGeometry: IGeometry, 
         return;
     }
 
-    const onChanged = () => {
-        const actorMargin = {
-            width: actor.width - gappedOldGeometry.width,
-            height: actor.height - gappedOldGeometry.height
-        };
+    const actorMargin = {
+        width: actor.width - gappedOldGeometry.width,
+        height: actor.height - gappedOldGeometry.height
+    };
 
-        const easeParams: EasingParamsWithProperties = {
-            translationX: 0,
-            translationY: 0,
-            scaleX: 1,
-            scaleY: 1,
-            mode: Clutter.AnimationMode.EASE_IN_OUT_EXPO,
-            duration: 700,
-        };
+    const scaleX = gappedNewGeometry.width / gappedOldGeometry.width;
+    const scaleY = gappedNewGeometry.height / gappedOldGeometry.height;
+    const translationX = (gappedNewGeometry.x - gappedOldGeometry.x) + (1 - scaleX) * actorMargin.width;
+    const translationY = (gappedNewGeometry.y - gappedOldGeometry.y) + (1 - scaleY) * actorMargin.height;
 
-        actor.scaleX = gappedOldGeometry.width / gappedNewGeometry.width;
-        actor.scaleY = gappedOldGeometry.height / gappedNewGeometry.height;
-        actor.translationX = (gappedOldGeometry.x - gappedNewGeometry.x) + (1 - actor.scaleX) * actorMargin.width;
-        actor.translationY = (gappedOldGeometry.y - gappedNewGeometry.y) + (1 - actor.scaleY) * actorMargin.height;
+    const easeParams: EasingParamsWithProperties = {
+        scaleX, scaleY, translationX, translationY,
+        mode: Clutter.AnimationMode.EASE_IN_OUT_EXPO,
+        duration: 700,
+        onStopped: (finished) => {
+            if (!finished) {
+                console.debug(`Animation Stopped Abruptly`);
+            }
+        },
+        onComplete: () => {
+            console.debug("Animation Completed");
+            simpleResizeWindow(windowHandle, gappedNewGeometry, () => {
+                actor.set_scale(1, 1);
+                actor.set_translation(0, 0, 0);
+            });
+        }
+    };
 
-        windowHandle.disconnect(onSizeChangedHandle);
-        windowHandle.disconnect(onPositionChangedHandle);
-
-        (actor as any).ease(easeParams);
-    }
-    const onSizeChangedHandle = windowHandle.connect("size-changed", onChanged);
-    const onPositionChangedHandle = windowHandle.connect("position-changed", onChanged);
-
-    simpleResizeWindow(windowHandle, gappedNewGeometry);
+    console.debug("Animation Started");
+    easeActor(actor, easeParams);
 }
 
-export function simpleResizeWindow(windowHandle: Meta.Window, newGeometry: IGeometry) {
+export function simpleResizeWindow(windowHandle: Meta.Window, newGeometry: IGeometry, callback?: () => void) {
     if (!windowHandle || !windowHandle.get_workspace()) return;
     if (windowHandle.fullscreen) {
         windowHandle.unmake_fullscreen();
@@ -71,12 +75,22 @@ export function simpleResizeWindow(windowHandle: Meta.Window, newGeometry: IGeom
     const geometry = windowHandle.get_frame_rect();
 
     if (geometry.width === newGeometry.width && geometry.height === newGeometry.height) {
+        const onComplete = windowHandle.connect_after("position-changed", () => {
+            windowHandle.disconnect(onComplete);
+            callback!();
+        });
+
         windowHandle.move_frame(
             true,
             newGeometry.x,
             newGeometry.y
         )
     } else {
+        const onComplete = windowHandle.connect_after("size-changed", () => {
+            windowHandle.disconnect(onComplete);
+            callback!();
+        });
+
         windowHandle.move_resize_frame(
             true,
             newGeometry.x,
