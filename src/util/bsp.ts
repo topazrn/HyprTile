@@ -153,7 +153,7 @@ export function printBspTree(logger: ConsoleLike, node: BspNode, indent: string 
     }
 
     if (node.type === 'window') {
-        logger.log(`${indent}Window Node (Title: ${node.windowHandle.title}) - Geo: (${node.geometry.x},${node.geometry.y},${node.geometry.width},${node.geometry.height})`);
+        logger.log(`${indent}Window Node (Title: ${node.windowHandle.title} ${node.windowHandle.get_pid()}) - Geo: (${node.geometry.x},${node.geometry.y},${node.geometry.width},${node.geometry.height})`);
     } else {
         const splitNode = node as ISplitNode;
         logger.log(`${indent}Split Node (Direction: ${splitNode.splitDirection}, Ratio: ${splitNode.splitRatio}) - Geo: (${node.geometry.x},${node.geometry.y},${node.geometry.width},${node.geometry.height})`);
