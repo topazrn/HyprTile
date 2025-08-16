@@ -1,3 +1,4 @@
+import Shell from "gi://Shell";
 import Gio from "gi://Gio";
 import Meta from "gi://Meta";
 import {
@@ -197,7 +198,14 @@ export default class DwindleLayout extends BaseLayout {
     // Assuming that the geometry of the node is already set correctly
     resizeChildren(node: BspNode): void {
         if (node.type === 'window') {
-            resizeWindow(node.windowHandle, node.geometry, this.workArea, this.settings);
+            resizeWindow(node.windowHandle, node.geometry, this.workArea, this.settings, () => {
+                if (!this.rootNode) return;
+                const global = Shell.Global.get();
+                const [pointerX, pointerY] = global.get_pointer();
+                const pointedWindow = windowAtPointer(this.rootNode, pointerX, pointerY);
+                if (!pointedWindow) return;
+                pointedWindow.windowHandle.focus(global.get_current_time());
+            });
             return;
         }
 

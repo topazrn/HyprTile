@@ -6,7 +6,7 @@ import { IGeometry } from "./bsp.js";
 import { EasingParamsWithProperties } from "@girs/gnome-shell/extensions/global";
 import { easeActor } from "./easer.js";
 
-export function resizeWindow(windowHandle: Meta.Window, newGeometry: IGeometry, workArea: IGeometry, settings: Gio.Settings): void {
+export function resizeWindow(windowHandle: Meta.Window, newGeometry: IGeometry, workArea: IGeometry, settings: Gio.Settings, callback?: () => void): void {
     const animate = settings.get_boolean("animate");
     const gapsIn = settings.get_int("gaps-in")
     const gapsOut = settings.get_int("gaps-out")
@@ -46,6 +46,7 @@ export function resizeWindow(windowHandle: Meta.Window, newGeometry: IGeometry, 
             simpleResizeWindow(windowHandle, gappedNewGeometry, () => {
                 actor.set_scale(1, 1);
                 actor.set_translation(0, 0, 0);
+                if (callback) callback();
             });
         }
     };
