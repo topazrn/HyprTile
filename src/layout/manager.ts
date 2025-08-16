@@ -1,7 +1,8 @@
+import Shell from "gi://Shell";
 import Meta from "gi://Meta";
 import Gio from "gi://Gio";
 import { keyOf, windowFilter } from "../util/helpers.js";
-import { findNodeFromWindowHandle, findWindowNodes, IPoint } from "../util/bsp.js";
+import { findNodeFromWindowHandle, IPoint } from "../util/bsp.js";
 import DwindleLayout from "./dwindle.js";
 import MasterLayout from "./master.js";
 import { BaseLayout } from "./base.js";
@@ -22,15 +23,9 @@ export class LayoutManager {
     }
 
     public reinitializeLayouts() {
-        for (const [key, wm] of this.instances) {
-            if (!wm.rootNode) continue;
-
-            const windows = findWindowNodes(wm.rootNode);
-            this.instances.delete(key);
-            windows.forEach(window => {
-                this.push(window.windowHandle);
-            });
-        }
+        const windows = Shell.Global.get().display.list_all_windows();
+        windows.forEach(window => this.pop(window));
+        windows.forEach(window => this.push(window));
     }
 
     public push(window: Meta.Window, point?: IPoint): void {
@@ -48,16 +43,7 @@ export class LayoutManager {
         wm.push(window, point);
     }
 
-    public pop(window: Meta.Window, key?: string): void {
-        if (key) {
-            let wm = this.instances.get(key);
-            if (!wm) {
-                console.debug(`No WindowManager instance found for ${key}, cannot pop window.`);
-                return;
-            }
-            return wm.pop(window);
-        }
-
+    public pop(window: Meta.Window): void {
         for (const [key, wm] of this.instances) {
             if (!wm.rootNode) continue;
             if (findNodeFromWindowHandle(wm.rootNode, window)) {
