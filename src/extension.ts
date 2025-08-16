@@ -5,16 +5,17 @@ import { LayoutManager } from './layout/manager.js';
 import { IPoint } from './util/bsp.js';
 
 export default class MyExtension extends Extension {
-  private connections: Function[] = [];
-  private shell = Shell.Global.get();
-  private display = this.shell.display;
+  private readonly connections: Function[] = [];
+  private readonly shell = Shell.Global.get();
+  private readonly display = this.shell.display;
+  private readonly settings = this.getSettings();
 
   constructor(metadata: ExtensionMetadata) {
     super(metadata);
   }
 
   enable() {
-    const layoutManager = new LayoutManager(this.getSettings());
+    const layoutManager = new LayoutManager(this.settings);
 
     const windowEntered = this.display.connect_after("window-entered-monitor", (_display, _, windowMightNotShown) => {
       const [pointerX, pointerY] = this.shell.get_pointer();
@@ -106,19 +107,19 @@ export default class MyExtension extends Extension {
     });
     this.connections.push(() => this.display.disconnect(windowReleased));
 
-    const settingsChanged = this.getSettings().connect_after("changed", (settings, key) => {
+    const settingsChanged = this.settings.connect("changed", (_, key) => {
       console.debug(`Settings changed: ${key}`);
       if (key === "gaps-in" || key === "gaps-out") {
         layoutManager.resizeAll();
         return;
       }
-      
+
       if (key === "layout") {
         layoutManager.reinitializeLayouts();
         return;
       }
     });
-    this.connections.push(() => this.getSettings().disconnect(settingsChanged))
+    this.connections.push(() => this.settings.disconnect(settingsChanged))
 
     this.display.list_all_windows().forEach((window) => {
       layoutManager.push(window);
