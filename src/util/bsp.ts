@@ -141,6 +141,25 @@ export function findNodeFromWindowHandle(rootNode: BspNode, targetWindowHandle: 
 }
 
 /**
+ * Traverses the BSP tree to find a specific IWindowNode by its window handle.
+ * Performs a Depth-First Search (DFS).
+ * @param rootNode The root of the BSP tree (e.g., the workspace's root node).
+ * @param targetWindowHandle The window handle to search for.
+ * @returns The IWindowNode with the matching handle, or null if not found.
+ */
+export function findWindowNodes(rootNode: BspNode): IWindowNode[] {
+    if (rootNode.type === 'window') {
+        return [rootNode];
+    }
+    
+    const splitNode = rootNode;
+    return [
+        ...(findWindowNodes(splitNode.leftChild)),
+        ...(findWindowNodes(splitNode.rightChild)),
+    ]
+}
+
+/**
  * Prints the structure of the BSP tree to the console, showing nodes and their relationships.
  * Performs a pre-order traversal.
  * @param node The current node to print.

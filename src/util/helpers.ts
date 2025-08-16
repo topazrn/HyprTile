@@ -1,3 +1,4 @@
+import Shell from "gi://Shell";
 import Meta from "gi://Meta";
 import Clutter from "gi://Clutter";
 import Gio from "gi://Gio";
@@ -167,4 +168,15 @@ export function windowFilter(window: Meta.Window): boolean {
 
 export function keyOf(window: Meta.Window): string {
     return `${window.get_workspace()}-${window.get_monitor()}`;
+}
+
+export function getWorkArea(workspaceId: number, monitorId: number): IGeometry {
+    const display = Shell.Global.get().display
+    const workspaceManager = display.get_workspace_manager();
+    const workspace = workspaceManager.get_workspace_by_index(workspaceId);
+    if (!workspace) {
+        console.warn(`No workspace found for index ${workspaceId}`);
+        return { x: 0, y: 0, width: 0, height: 0 };
+    }
+    return workspace.get_work_area_for_monitor(monitorId);
 }

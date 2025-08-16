@@ -1,3 +1,4 @@
+import Gio from "gi://Gio";
 import Meta from "gi://Meta";
 import {
     BspNode,
@@ -9,9 +10,13 @@ import {
     IPoint
 } from "../util/bsp.js";
 import { removeGaps, resizeWindow } from "../util/helpers.js";
-import { WindowManager } from "./wm.js";
+import { BaseLayout } from "./base.js";
 
-export default class Dwindle extends WindowManager {
+export default class DwindleLayout extends BaseLayout {
+    constructor(key: string, settings: Gio.Settings) {
+        super(key, settings);
+    }
+
     push(newWindow: Meta.Window, point?: IPoint): void {
         if (!this.rootNode) {
             const geometry = this.workArea;

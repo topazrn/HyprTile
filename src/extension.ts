@@ -1,7 +1,7 @@
 import Meta from 'gi://Meta';
 import Shell from 'gi://Shell';
 import { Extension, ExtensionMetadata } from 'resource:///org/gnome/shell/extensions/extension.js';
-import Dwindle from './layout/dwindle.js';
+import { LayoutManager } from './layout/manager.js';
 import { IPoint } from './util/bsp.js';
 
 export default class MyExtension extends Extension {
@@ -14,6 +14,8 @@ export default class MyExtension extends Extension {
   }
 
   enable() {
+    const layoutManager = new LayoutManager(this.getSettings());
+
     const windowEntered = this.display.connect_after("window-entered-monitor", (_display, _, windowMightNotShown) => {
       const [pointerX, pointerY] = this.shell.get_pointer();
       const point: IPoint = { x: pointerX, y: pointerY };
@@ -21,8 +23,8 @@ export default class MyExtension extends Extension {
       const windowChangedWorkspace = windowMightNotShown.connect_after("workspace-changed", (window) => {
         // This event also fires when the window is closed
         if (!windowMightNotShown || !windowMightNotShown.get_workspace()) return;
-        Dwindle.pop(window);
-        Dwindle.push(window);
+        layoutManager.pop(window);
+        layoutManager.push(window);
       });
       this.connections.push(() => windowMightNotShown.disconnect(windowChangedWorkspace));
 
@@ -33,7 +35,7 @@ export default class MyExtension extends Extension {
       this.connections.push(() => windowMightNotShown.disconnect(windowClosed));
 
       if (windowMightNotShown.title) {
-        Dwindle.push(windowMightNotShown, point);
+        layoutManager.push(windowMightNotShown, point);
         return;
       }
 
@@ -43,7 +45,7 @@ export default class MyExtension extends Extension {
 
         const effectsCompleted = actor.connect_after("effects-completed", (_) => {
           actor.disconnect(effectsCompleted);
-          Dwindle.push(window, point);
+          layoutManager.push(window, point);
         })
         this.connections.push(() => actor.disconnect(effectsCompleted));
       }
@@ -53,7 +55,7 @@ export default class MyExtension extends Extension {
     this.connections.push(() => this.display.disconnect(windowEntered));
 
     const windowLeft = this.display.connect_after("window-left-monitor", (_display, _, window) => {
-      Dwindle.pop(window);
+      layoutManager.pop(window);
     });
     this.connections.push(() => this.display.disconnect(windowLeft));
 
@@ -63,7 +65,7 @@ export default class MyExtension extends Extension {
         operation === Meta.GrabOp.MOVING_UNCONSTRAINED ||
         operation === Meta.GrabOp.KEYBOARD_MOVING
       ) {
-        Dwindle.pop(window);
+        layoutManager.pop(window);
       }
     });
     this.connections.push(() => this.display.disconnect(windowGrabbed));
@@ -74,7 +76,7 @@ export default class MyExtension extends Extension {
         operation === Meta.GrabOp.MOVING_UNCONSTRAINED ||
         operation === Meta.GrabOp.KEYBOARD_MOVING
       ) {
-        Dwindle.push(window);
+        layoutManager.push(window);
       }
 
       if (
@@ -98,14 +100,28 @@ export default class MyExtension extends Extension {
       ) {
         const sizeChanged = window.connect_after("size-changed", () => {
           window.disconnect(sizeChanged);
-          Dwindle.resizeNeighbors(window);
+          layoutManager.resizeNeighbors(window);
         });
       }
     });
     this.connections.push(() => this.display.disconnect(windowReleased));
 
+    const settingsChanged = this.getSettings().connect_after("changed", (settings, key) => {
+      console.debug(`Settings changed: ${key}`);
+      if (key === "gaps-in" || key === "gaps-out") {
+        layoutManager.resizeAll();
+        return;
+      }
+      
+      if (key === "layout") {
+        layoutManager.reinitializeLayouts();
+        return;
+      }
+    });
+    this.connections.push(() => this.getSettings().disconnect(settingsChanged))
+
     this.display.list_all_windows().forEach((window) => {
-      Dwindle.push(window);
+      layoutManager.push(window);
     });
   }
 
