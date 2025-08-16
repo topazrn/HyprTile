@@ -17,7 +17,7 @@ export default class MyExtension extends Extension {
   enable() {
     const layoutManager = new LayoutManager(this.settings);
 
-    const windowEntered = this.display.connect_after("window-entered-monitor", (_display, _, windowMightNotShown) => {
+    const windowEntered = this.display.connect_after("window-created", (_display, windowMightNotShown) => {
       const [pointerX, pointerY] = this.shell.get_pointer();
       const point: IPoint = { x: pointerX, y: pointerY };
 
@@ -35,23 +35,11 @@ export default class MyExtension extends Extension {
       });
       this.connections.push(() => windowMightNotShown.disconnect(windowClosed));
 
-      if (windowMightNotShown.title) {
+      const actor: Meta.WindowActor = windowMightNotShown.get_compositor_private();
+      const effectsCompleted = actor.connect_after("effects-completed", () => {
+        actor.disconnect(effectsCompleted);
         layoutManager.push(windowMightNotShown, point);
-        return;
-      }
-
-      const windowShown = windowMightNotShown.connect_after("shown", (window) => {
-        windowMightNotShown.disconnect(windowShown);
-        const actor: Meta.WindowActor = window.get_compositor_private();
-
-        const effectsCompleted = actor.connect_after("effects-completed", (_) => {
-          actor.disconnect(effectsCompleted);
-          layoutManager.push(window, point);
-        })
-        this.connections.push(() => actor.disconnect(effectsCompleted));
-      }
-      );
-      this.connections.push(() => windowMightNotShown.disconnect(windowShown));
+      });
     });
     this.connections.push(() => this.display.disconnect(windowEntered));
 
