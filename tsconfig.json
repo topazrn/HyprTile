@@ -7,11 +7,7 @@
     "strict": true,
     "target": "ES2022",
     "skipLibCheck": true,
-    "lib": [
-      "ES2022"
-    ],
+    "lib": ["ES2022"]
   },
-  "include": [
-    "src/**/*.ts",
-  ],
+  "include": ["src/**/*.ts"]
 }

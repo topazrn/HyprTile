@@ -27,8 +27,9 @@
     "url": "https://github.com/topazrn/HyprTile/issues"
   },
   "homepage": "https://github.com/topazrn/HyprTile#readme",
-  "dependencies": {
+  "devDependencies": {
     "@girs/gnome-shell": "^48.0.2",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "@biomejs/biome": "2.2.2"
   }
 }

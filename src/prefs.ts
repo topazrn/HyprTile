@@ -1,75 +1,100 @@
-import Gtk from 'gi://Gtk';
-import Adw from 'gi://Adw';
-import Gio from 'gi://Gio';
-import { ExtensionPreferences, gettext as _ } from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
+import Adw from "gi://Adw";
+import Gio from "gi://Gio";
+import Gtk from "gi://Gtk";
+import {
+  gettext as _,
+  ExtensionPreferences,
+} from "resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js";
 
 export default class GnomeRectanglePreferences extends ExtensionPreferences {
-  _settings?: Gio.Settings
+  _settings?: Gio.Settings;
 
   fillPreferencesWindow(window: Adw.PreferencesWindow): Promise<void> {
     this._settings = this.getSettings();
 
     const page = new Adw.PreferencesPage({
-      title: _('General'),
-      iconName: 'dialog-information-symbolic',
+      title: _("General"),
+      iconName: "dialog-information-symbolic",
     });
 
     const generalGroup = new Adw.PreferencesGroup({
-      title: _('General'),
+      title: _("General"),
     });
 
     page.add(generalGroup);
 
     const layout = new Adw.ActionRow({
-      title: 'Layout',
-      subtitle: 'Which layout to choose',
+      title: "Layout",
+      subtitle: "Which layout to choose",
     });
     const layoutToggle = new Adw.ToggleGroup({ valign: Gtk.Align.CENTER });
-    layoutToggle.add(new Adw.Toggle({ name: "dwindle", label: "Dwindle" }))
-    layoutToggle.add(new Adw.Toggle({ name: "master", label: "Master" }))
+    layoutToggle.add(new Adw.Toggle({ name: "dwindle", label: "Dwindle" }));
+    layoutToggle.add(new Adw.Toggle({ name: "master", label: "Master" }));
     layout.add_suffix(layoutToggle);
     generalGroup.add(layout);
 
     const animate = new Adw.SwitchRow({
-      title: _('Animation'),
-      subtitle: _('Whether to animate windows move/resize'),
+      title: _("Animation"),
+      subtitle: _("Whether to animate windows move/resize"),
     });
     generalGroup.add(animate);
 
     const gapsGroup = new Adw.PreferencesGroup({
-      title: _('Gaps'),
-      description: _('Configure the gaps between windows'),
+      title: _("Gaps"),
+      description: _("Configure the gaps between windows"),
     });
     page.add(gapsGroup);
 
     const gapsIn = new Adw.SpinRow({
-      title: _('Gaps In'),
-      subtitle: _('Gaps between windows'),
+      title: _("Gaps In"),
+      subtitle: _("Gaps between windows"),
       adjustment: new Gtk.Adjustment({
         lower: 0,
         upper: 1000,
-        stepIncrement: 1
-      })
+        stepIncrement: 1,
+      }),
     });
     gapsGroup.add(gapsIn);
 
     const gapsOut = new Adw.SpinRow({
-      title: _('Gaps Out'),
-      subtitle: _('Gaps between windows and screen edges'),
+      title: _("Gaps Out"),
+      subtitle: _("Gaps between windows and screen edges"),
       adjustment: new Gtk.Adjustment({
         lower: 0,
         upper: 1000,
-        stepIncrement: 1
-      })
+        stepIncrement: 1,
+      }),
     });
     gapsGroup.add(gapsOut);
 
-    window.add(page)
+    window.add(page);
 
-    this._settings!.bind('layout', layoutToggle, 'active-name', Gio.SettingsBindFlags.DEFAULT);
-    this._settings!.bind('animate', animate, 'active', Gio.SettingsBindFlags.DEFAULT);
-    this._settings!.bind('gaps-in', gapsIn, 'value', Gio.SettingsBindFlags.DEFAULT);
-    this._settings!.bind('gaps-out', gapsOut, 'value', Gio.SettingsBindFlags.DEFAULT);
+    if (this._settings) {
+      this._settings.bind(
+        "layout",
+        layoutToggle,
+        "active-name",
+        Gio.SettingsBindFlags.DEFAULT,
+      );
+      this._settings.bind(
+        "animate",
+        animate,
+        "active",
+        Gio.SettingsBindFlags.DEFAULT,
+      );
+      this._settings.bind(
+        "gaps-in",
+        gapsIn,
+        "value",
+        Gio.SettingsBindFlags.DEFAULT,
+      );
+      this._settings.bind(
+        "gaps-out",
+        gapsOut,
+        "value",
+        Gio.SettingsBindFlags.DEFAULT,
+      );
+    }
 
     return Promise.resolve();
   }
