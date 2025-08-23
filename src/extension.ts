@@ -87,10 +87,18 @@ export default class MyExtension extends Extension {
         operation === Meta.GrabOp.KEYBOARD_RESIZING_SE ||
         operation === Meta.GrabOp.KEYBOARD_RESIZING_W
       ) {
+        layoutManager.resizeNeighbors(window);
+
         const sizeChanged = window.connect_after("size-changed", () => {
+          // Only triggers if the user does the resize operation quickly
           window.disconnect(sizeChanged);
           layoutManager.resizeNeighbors(window);
         });
+
+        setTimeout(() => {
+          // In case the user does the resize operation carefully
+          window.disconnect(sizeChanged);
+        }, 100);
       }
     });
     this.connections.push(() => this.display.disconnect(windowReleased));
