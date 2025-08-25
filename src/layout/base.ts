@@ -23,8 +23,8 @@ export abstract class BaseLayout {
     this.workArea = getWorkArea(this.workspace, this.monitor);
   }
 
-  abstract push(newWindow: Meta.Window, point?: IPoint): void;
-  abstract pop(oldWindow: Meta.Window): void;
-  abstract resizeChildren(node: BspNode): void;
-  abstract resizeNeighbors(window: Meta.Window): void;
+  abstract push(newWindow: Meta.Window, point?: IPoint): Promise<void>;
+  abstract pop(oldWindow: Meta.Window): Promise<void>;
+  abstract resizeChildren(node: BspNode): Promise<void>;
+  abstract resizeNeighbors(window: Meta.Window): Promise<void>;
 }

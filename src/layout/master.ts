@@ -15,7 +15,7 @@ import { removeGaps, resizeWindow } from "../util/helpers.js";
 import { BaseLayout } from "./base.js";
 
 export default class MasterLayout extends BaseLayout {
-  push(newWindow: Meta.Window, point?: IPoint): void {
+  async push(newWindow: Meta.Window, point?: IPoint): Promise<void> {
     if (!this.rootNode) {
       const geometry = this.workArea;
       this.rootNode = createWindowNode(newWindow, geometry, null);
@@ -135,14 +135,14 @@ export default class MasterLayout extends BaseLayout {
       parent.parent = grandParent;
     }
 
-    this.resizeChildren(parent); // Resize the children of the new split node
+    await this.resizeChildren(parent); // Resize the children of the new split node
 
     console.debug("");
     printBspTree(this.rootNode, "  ");
     console.debug("");
   }
 
-  pop(oldWindow: Meta.Window): void {
+  async pop(oldWindow: Meta.Window): Promise<void> {
     if (!this.rootNode) {
       console.debug(`No root node exists for ${this.key}, cannot pop window.`);
       return;
@@ -193,7 +193,7 @@ export default class MasterLayout extends BaseLayout {
     }
     remainingChild.geometry = parent.geometry; // Update geometry to parent's geometry
 
-    this.resizeChildren(remainingChild); // Resize the children of the remaining node
+    await this.resizeChildren(remainingChild); // Resize the children of the remaining node
 
     console.debug("");
     printBspTree(this.rootNode, "  ");
@@ -252,7 +252,7 @@ export default class MasterLayout extends BaseLayout {
     this.resizeChildren(node.rightChild);
   }
 
-  resizeNeighbors(window: Meta.Window): void {
+  async resizeNeighbors(window: Meta.Window): Promise<void> {
     if (!this.rootNode) {
       console.debug(
         `No root node exists for ${this.key}, cannot resize neighboring window.`,
@@ -296,7 +296,7 @@ export default class MasterLayout extends BaseLayout {
 
     if (node.parent.parent?.type === "split") {
       if (node.parent.parent.splitDirection === node.parent.splitDirection) {
-        this.resizeChildren(node.parent);
+        await this.resizeChildren(node.parent);
       } else {
         adjustSplitRatio(
           node.parent,
@@ -304,10 +304,10 @@ export default class MasterLayout extends BaseLayout {
           newGeometry,
           this.minSplitRatio,
         );
-        this.resizeChildren(node.parent.parent);
+        await this.resizeChildren(node.parent.parent);
       }
     } else {
-      this.resizeChildren(node.parent);
+      await this.resizeChildren(node.parent);
     }
 
     console.debug("");

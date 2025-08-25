@@ -41,6 +41,7 @@ export async function easeActor(
   delete params.mode;
 
   const prepare = () => {
+    console.debug("Animation Started");
     global.compositor.disable_unredirect();
     global.begin_work();
   };
@@ -75,7 +76,9 @@ export async function easeActor(
     return new Promise<void>((resolve, reject) => {
       transition.connect("stopped", (_source, finished) => {
         cleanup();
-        return finished ? resolve() : reject();
+        finished
+          ? resolve(console.debug("Animation Completed"))
+          : reject(console.debug(`Animation Stopped Abruptly`));
       });
     });
   } else {

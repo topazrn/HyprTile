@@ -55,14 +55,12 @@ export async function resizeWindow(
   };
 
   try {
-    console.debug("Animation Started");
     await easeActor(actor, easeParams);
-    console.debug("Animation Completed");
     await simpleResizeWindow(windowHandle, gappedNewGeometry);
     actor.set_scale(1, 1);
     actor.set_translation(0, 0, 0);
   } catch {
-    console.debug(`Animation Stopped Abruptly`);
+    return Promise.reject();
   }
 }
 
