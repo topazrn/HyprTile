@@ -14,34 +14,10 @@ const kebabize = (str: string) =>
     ($: string, ofs: boolean) => (ofs ? "-" : "") + $.toLowerCase(),
   );
 
-function makeEaseCallback(
-  params: EasingParamsWithProperties,
-  cleanup: () => void,
-) {
-  const onComplete = params.onComplete;
-  delete params.onComplete;
-
-  const onStopped = params.onStopped;
-  delete params.onStopped;
-
-  return (isFinished: boolean) => {
-    cleanup();
-
-    if (onStopped) onStopped(isFinished);
-    if (onComplete && isFinished) onComplete();
-  };
-}
-
-export function easeActor(
+export async function easeActor(
   actor: Clutter.Actor,
   params: EasingParamsWithProperties,
-) {
-  params = {
-    repeatCount: 0,
-    autoReverse: false,
-    ...params,
-  };
-
+): Promise<void> {
   actor.save_easing_state();
 
   if (params.duration !== undefined) actor.set_easing_duration(params.duration);
@@ -53,7 +29,7 @@ export function easeActor(
   const repeatCount = params.repeatCount ?? 0;
   delete params.repeatCount;
 
-  const autoReverse = params.autoReverse;
+  const autoReverse = params.autoReverse ?? false;
   delete params.autoReverse;
 
   // repeatCount doesn't include the initial iteration
@@ -72,7 +48,6 @@ export function easeActor(
     global.compositor.enable_unredirect();
     global.end_work();
   };
-  const callback = makeEaseCallback(params, cleanup);
 
   // cancel overwritten transitions
   // let animatedProps = Object.keys(params).map(p => p.replace('_', '-', 'g')); // Original function
@@ -97,8 +72,13 @@ export function easeActor(
   }
 
   if (transition) {
-    transition.connect("stopped", (_source, finished) => callback(finished));
+    return new Promise<void>((resolve, reject) => {
+      transition.connect("stopped", (_source, finished) => {
+        cleanup();
+        return finished ? resolve() : reject();
+      });
+    });
   } else {
-    callback(true);
+    cleanup();
   }
 }

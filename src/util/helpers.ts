@@ -6,13 +6,12 @@ import type { EasingParamsWithProperties } from "@girs/gnome-shell/extensions/gl
 import type { IGeometry } from "./bsp.js";
 import { easeActor } from "./easer.js";
 
-export function resizeWindow(
+export async function resizeWindow(
   windowHandle: Meta.Window,
   newGeometry: IGeometry,
   workArea: IGeometry,
   settings: Gio.Settings,
-  callback?: () => void,
-): void {
+): Promise<void> {
   const animate = settings.get_boolean("animate");
   const gapsIn = settings.get_int("gaps-in");
   const gapsOut = settings.get_int("gaps-out");
@@ -53,30 +52,24 @@ export function resizeWindow(
     translationY,
     mode: Clutter.AnimationMode.EASE_IN_OUT_EXPO,
     duration: 700,
-    onStopped: (finished) => {
-      if (!finished) {
-        console.debug(`Animation Stopped Abruptly`);
-      }
-    },
-    onComplete: () => {
-      console.debug("Animation Completed");
-      simpleResizeWindow(windowHandle, gappedNewGeometry, () => {
-        actor.set_scale(1, 1);
-        actor.set_translation(0, 0, 0);
-        if (callback) callback();
-      });
-    },
   };
 
-  console.debug("Animation Started");
-  easeActor(actor, easeParams);
+  try {
+    console.debug("Animation Started");
+    await easeActor(actor, easeParams);
+    console.debug("Animation Completed");
+    await simpleResizeWindow(windowHandle, gappedNewGeometry);
+    actor.set_scale(1, 1);
+    actor.set_translation(0, 0, 0);
+  } catch {
+    console.debug(`Animation Stopped Abruptly`);
+  }
 }
 
-export function simpleResizeWindow(
+export async function simpleResizeWindow(
   windowHandle: Meta.Window,
   newGeometry: IGeometry,
-  callback?: () => void,
-) {
+): Promise<void> {
   if (!windowHandle || !windowHandle.get_workspace()) return;
   if (windowHandle.fullscreen) {
     windowHandle.unmake_fullscreen();
@@ -97,9 +90,11 @@ export function simpleResizeWindow(
     geometry.width !== newGeometry.width ||
     geometry.height !== newGeometry.height
   ) {
-    const onComplete = windowHandle.connect_after("size-changed", () => {
-      windowHandle.disconnect(onComplete);
-      if (callback) callback();
+    const promise = new Promise<void>((resolve) => {
+      const onComplete = windowHandle.connect_after("size-changed", () => {
+        windowHandle.disconnect(onComplete);
+        resolve();
+      });
     });
 
     windowHandle.move_resize_frame(
@@ -109,20 +104,20 @@ export function simpleResizeWindow(
       newGeometry.width,
       newGeometry.height,
     );
-    return;
+    return promise;
   }
 
   if (geometry.x !== newGeometry.x || geometry.y !== newGeometry.y) {
-    const onComplete = windowHandle.connect_after("position-changed", () => {
-      windowHandle.disconnect(onComplete);
-      if (callback) callback();
+    const promise = new Promise<void>((resolve) => {
+      const onComplete = windowHandle.connect_after("position-changed", () => {
+        windowHandle.disconnect(onComplete);
+        resolve();
+      });
     });
 
     windowHandle.move_frame(true, newGeometry.x, newGeometry.y);
-    return;
+    return promise;
   }
-
-  if (callback) callback();
 }
 
 // Assuming geometry not gapped

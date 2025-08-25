@@ -202,26 +202,20 @@ export default class DwindleLayout extends BaseLayout {
 
   // Resize the descendants of the node recursively
   // Assuming that the geometry of the node is already set correctly
-  resizeChildren(node: BspNode): void {
+  async resizeChildren(node: BspNode): Promise<void> {
     if (node.type === "window") {
-      resizeWindow(
+      await resizeWindow(
         node.windowHandle,
         node.geometry,
         this.workArea,
         this.settings,
-        () => {
-          if (!this.rootNode) return;
-          const global = Shell.Global.get();
-          const [pointerX, pointerY] = global.get_pointer();
-          const pointedWindow = windowAtPointer(
-            this.rootNode,
-            pointerX,
-            pointerY,
-          );
-          if (!pointedWindow) return;
-          pointedWindow.windowHandle.focus(global.get_current_time());
-        },
       );
+      if (!this.rootNode) return;
+      const global = Shell.Global.get();
+      const [pointerX, pointerY] = global.get_pointer();
+      const pointedWindow = windowAtPointer(this.rootNode, pointerX, pointerY);
+      if (!pointedWindow) return;
+      pointedWindow.windowHandle.focus(global.get_current_time());
       return;
     }
 
