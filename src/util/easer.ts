@@ -5,7 +5,7 @@
 // The `actor.get_transition()` method, however, expects a kebab-case string.
 // This change ensures the string format is correct for the transition lookup.
 
-import type Clutter from "gi://Clutter";
+import Clutter from "gi://Clutter";
 import type { EasingParamsWithProperties } from "@girs/gnome-shell/extensions/global";
 
 const kebabize = (str: string) =>
@@ -13,6 +13,17 @@ const kebabize = (str: string) =>
     /[A-Z]+(?![a-z])|[A-Z]/g,
     ($: string, ofs: boolean) => (ofs ? "-" : "") + $.toLowerCase(),
   );
+
+export async function abortEase(actor: Clutter.Actor) {
+  return easeActor(actor, {
+    scaleX: 1,
+    scaleY: 1,
+    translationX: 0,
+    translationY: 0,
+    duration: 0,
+    mode: Clutter.AnimationMode.EASE_IN_OUT_EXPO,
+  });
+}
 
 export async function easeActor(
   actor: Clutter.Actor,

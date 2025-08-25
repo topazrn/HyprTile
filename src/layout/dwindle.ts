@@ -13,16 +13,19 @@ import {
 } from "../util/bsp.js";
 import { removeGaps, resizeWindow } from "../util/helpers.js";
 import { BaseLayout } from "./base.js";
+import { abortEase } from "../util/easer.js";
 
 export default class DwindleLayout extends BaseLayout {
   async push(newWindow: Meta.Window, point?: IPoint): Promise<void> {
     if (!this.rootNode) {
       const geometry = this.workArea;
       this.rootNode = createWindowNode(newWindow, geometry, null);
-      await this.resizeChildren(this.rootNode);
+      try {
+        await this.resizeChildren(this.rootNode);
 
-      console.debug("");
-      printBspTree(this.rootNode, "  ");
+        console.debug("");
+        printBspTree(this.rootNode, "  ");
+      } catch {}
       return;
     }
 
@@ -147,6 +150,9 @@ export default class DwindleLayout extends BaseLayout {
   }
 
   async pop(oldWindow: Meta.Window): Promise<void> {
+    const actor: Meta.WindowActor = oldWindow.get_compositor_private();
+    await abortEase(actor);
+
     if (!this.rootNode) {
       console.debug(`No root node exists for ${this.key}, cannot pop window.`);
       return;
