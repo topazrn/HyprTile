@@ -2,7 +2,7 @@ import type Gio from "gi://Gio";
 import type Meta from "gi://Meta";
 import Shell from "gi://Shell";
 import { findNodeFromWindowHandle, type IPoint } from "../util/bsp.js";
-import { keyOf, windowFilter } from "../util/helpers.js";
+import { getWorkArea, keyOf, windowFilter } from "../util/helpers.js";
 import type { BaseLayout } from "./base.js";
 import DwindleLayout from "./dwindle.js";
 import MasterLayout from "./master.js";
@@ -15,20 +15,25 @@ export class LayoutManager {
     this.settings = settings;
   }
 
-  public resizeAll() {
+  updateWorkArea() {
     for (const [_key, wm] of this.instances) {
-      if (!wm.rootNode) continue;
-      wm.resizeChildren(wm.rootNode);
+      wm.workArea = getWorkArea(wm.workspace, wm.monitor);
     }
   }
 
-  public reinitializeLayouts() {
+  resizeAll() {
+    for (const [_key, wm] of this.instances) {
+      if (wm.rootNode) wm.resizeChildren(wm.rootNode);
+    }
+  }
+
+  reinitializeLayouts() {
     const windows = Shell.Global.get().display.list_all_windows();
     windows.forEach((window) => this.pop(window));
     windows.forEach((window) => this.push(window));
   }
 
-  public push(window: Meta.Window, point?: IPoint): void {
+  push(window: Meta.Window, point?: IPoint): void {
     if (!windowFilter(window)) return;
     const key = keyOf(window);
     let wm = this.instances.get(key);
@@ -54,7 +59,7 @@ export class LayoutManager {
     }
   }
 
-  public resizeNeighbors(window: Meta.Window) {
+  resizeNeighbors(window: Meta.Window) {
     const key = keyOf(window);
     const wm = this.instances.get(key);
     if (!wm) {

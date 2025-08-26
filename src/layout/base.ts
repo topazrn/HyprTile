@@ -9,7 +9,7 @@ export abstract class BaseLayout {
   readonly monitor: number;
   rootNode: BspNode | null;
   readonly settings: Gio.Settings;
-  readonly workArea: IGeometry;
+  workArea: IGeometry;
   readonly defaultSplitRatio: number = 0.5;
   readonly minSplitRatio: number = 0.1;
 

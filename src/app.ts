@@ -143,6 +143,15 @@ export default class HyprTile extends GarbageCollector {
     });
     this.defer(() => this.settings.disconnect(settingsChanged));
 
+    const workareaChanged = this.display.connect_after(
+      "workareas-changed",
+      (_) => {
+        this.layoutManager.updateWorkArea();
+        this.layoutManager.resizeAll();
+      },
+    );
+    this.defer(() => this.display.disconnect(workareaChanged));
+
     this.display.list_all_windows().forEach((window) => {
       this.layoutManager.push(window);
     });
