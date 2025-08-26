@@ -11,6 +11,7 @@ import {
   printBspTree,
   windowAtPointer,
 } from "../util/bsp.js";
+import { abortEase } from "../util/easer.js";
 import { removeGaps, resizeWindow } from "../util/helpers.js";
 import { BaseLayout } from "./base.js";
 
@@ -19,7 +20,12 @@ export default class MasterLayout extends BaseLayout {
     if (!this.rootNode) {
       const geometry = this.workArea;
       this.rootNode = createWindowNode(newWindow, geometry, null);
-      this.resizeChildren(this.rootNode);
+      try {
+        await this.resizeChildren(this.rootNode);
+
+        console.debug("");
+        printBspTree(this.rootNode, "  ");
+      } catch {}
       return;
     }
 
@@ -135,14 +141,18 @@ export default class MasterLayout extends BaseLayout {
       parent.parent = grandParent;
     }
 
-    await this.resizeChildren(parent); // Resize the children of the new split node
+    try {
+      await this.resizeChildren(parent); // Resize the children of the new split node
 
-    console.debug("");
-    printBspTree(this.rootNode, "  ");
-    console.debug("");
+      console.debug("");
+      printBspTree(this.rootNode, "  ");
+    } catch {}
   }
 
   async pop(oldWindow: Meta.Window): Promise<void> {
+    const actor: Meta.WindowActor = oldWindow.get_compositor_private();
+    await abortEase(actor);
+
     if (!this.rootNode) {
       console.debug(`No root node exists for ${this.key}, cannot pop window.`);
       return;
@@ -193,30 +203,39 @@ export default class MasterLayout extends BaseLayout {
     }
     remainingChild.geometry = parent.geometry; // Update geometry to parent's geometry
 
-    await this.resizeChildren(remainingChild); // Resize the children of the remaining node
+    try {
+      await this.resizeChildren(remainingChild); // Resize the children of the remaining node
 
-    console.debug("");
-    printBspTree(this.rootNode, "  ");
-    console.debug("");
+      console.debug("");
+      printBspTree(this.rootNode, "  ");
+    } catch {}
   }
 
   // Resize the descendants of the node recursively
   // Assuming that the geometry of the node is already set correctly
   async resizeChildren(node: BspNode): Promise<void> {
     if (node.type === "window") {
-      await resizeWindow(
-        node.windowHandle,
-        node.geometry,
-        this.workArea,
-        this.settings,
-      );
-      if (!this.rootNode) return;
-      const global = Shell.Global.get();
-      const [pointerX, pointerY] = global.get_pointer();
-      const pointedWindow = windowAtPointer(this.rootNode, pointerX, pointerY);
-      if (!pointedWindow) return;
-      pointedWindow.windowHandle.focus(global.get_current_time());
-      return;
+      try {
+        await resizeWindow(
+          node.windowHandle,
+          node.geometry,
+          this.workArea,
+          this.settings,
+        );
+        if (!this.rootNode) return;
+        const global = Shell.Global.get();
+        const [pointerX, pointerY] = global.get_pointer();
+        const pointedWindow = windowAtPointer(
+          this.rootNode,
+          pointerX,
+          pointerY,
+        );
+        if (!pointedWindow) return;
+        pointedWindow.windowHandle.focus(global.get_current_time());
+        return;
+      } catch {
+        return Promise.reject();
+      }
     }
 
     if (node.splitDirection === "vertical") {
@@ -248,8 +267,10 @@ export default class MasterLayout extends BaseLayout {
     }
 
     // Resize both children too
-    this.resizeChildren(node.leftChild);
-    this.resizeChildren(node.rightChild);
+    await Promise.all([
+      this.resizeChildren(node.leftChild),
+      this.resizeChildren(node.rightChild),
+    ]);
   }
 
   async resizeNeighbors(window: Meta.Window): Promise<void> {

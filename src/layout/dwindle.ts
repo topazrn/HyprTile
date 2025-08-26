@@ -11,9 +11,9 @@ import {
   printBspTree,
   windowAtPointer,
 } from "../util/bsp.js";
+import { abortEase } from "../util/easer.js";
 import { removeGaps, resizeWindow } from "../util/helpers.js";
 import { BaseLayout } from "./base.js";
-import { abortEase } from "../util/easer.js";
 
 export default class DwindleLayout extends BaseLayout {
   async push(newWindow: Meta.Window, point?: IPoint): Promise<void> {
