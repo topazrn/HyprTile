@@ -43,13 +43,14 @@ export class LayoutManager {
     wm.push(window, point);
   }
 
-  public pop(window: Meta.Window): void {
+  async pop(window: Meta.Window): Promise<void> {
     for (const [_key, wm] of this.instances) {
       if (!wm.rootNode) continue;
-      if (findNodeFromWindowHandle(wm.rootNode, window)) {
-        wm.pop(window);
-        return;
-      }
+      if (!findNodeFromWindowHandle(wm.rootNode, window)) continue;
+      await wm.pop(window);
+      if (wm.rootNode) return;
+      this.instances.delete(wm.key);
+      return;
     }
   }
 
