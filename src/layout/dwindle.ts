@@ -1,35 +1,35 @@
+import type Gio from "gi://Gio";
 import type Meta from "gi://Meta";
 import Shell from "gi://Shell";
-import {
-  adjustSplitRatio,
-  type BspNode,
-  createSplitNode,
-  createWindowNode,
-  findNodeFromWindowHandle,
-  type IGeometry,
-  type IPoint,
-  printBspTree,
-  windowAtPointer,
-} from "../util/bsp.js";
+import * as DwindleUtil from "../util/dwindle.js";
 import { abortEase } from "../util/easer.js";
+import type { IGeometry, IPoint } from "../util/geometry.js";
 import { removeGaps, resizeWindow } from "../util/helpers.js";
 import { BaseLayout } from "./base.js";
 
 export default class DwindleLayout extends BaseLayout {
+  rootNode: DwindleUtil.BspNode | null;
+
+  constructor(key: string, settings: Gio.Settings) {
+    super(key, settings);
+    this.rootNode = null;
+  }
+
   async push(newWindow: Meta.Window, point?: IPoint): Promise<void> {
     if (!this.rootNode) {
-      const geometry = this.workArea;
-      this.rootNode = createWindowNode(newWindow, geometry, null);
-      try {
-        await this.resizeChildren(this.rootNode);
+      this.rootNode = DwindleUtil.createWindowNode(
+        newWindow,
+        this.workArea,
+        null,
+      );
+      await this.resizeChildren(this.rootNode);
 
-        console.debug("");
-        printBspTree(this.rootNode, "  ");
-      } catch {}
+      console.debug("");
+      DwindleUtil.printLayout(this.rootNode, "  ");
       return;
     }
 
-    if (findNodeFromWindowHandle(this.rootNode, newWindow)) {
+    if (this.findNodeFromWindowHandle(newWindow, this.rootNode)) {
       // This happens when GNOME Shell resumes after a suspend.
       // In this case, we should not push the window again.
       console.debug(
@@ -59,7 +59,7 @@ export default class DwindleLayout extends BaseLayout {
       this.workArea.y + this.workArea.height - 1,
     );
 
-    const node = windowAtPointer(this.rootNode, targetX, targetY);
+    const node = DwindleUtil.windowAtPointer(this.rootNode, targetX, targetY);
     console.debug(`Pointer at (${targetX}, ${targetY})`);
     if (!node) return; // Already handled at the beginning of the function
 
@@ -107,9 +107,13 @@ export default class DwindleLayout extends BaseLayout {
       }
     }
 
-    const oldNode = createWindowNode(node.windowHandle, oldGeometry, null);
-    const newNode = createWindowNode(newWindow, newGeometry, null);
-    const parent = createSplitNode(
+    const oldNode = DwindleUtil.createWindowNode(
+      node.windowHandle,
+      oldGeometry,
+      null,
+    );
+    const newNode = DwindleUtil.createWindowNode(newWindow, newGeometry, null);
+    const parent = DwindleUtil.createSplitNode(
       splitDirection,
       this.defaultSplitRatio,
       hover === "left" ? newNode : oldNode,
@@ -145,7 +149,7 @@ export default class DwindleLayout extends BaseLayout {
       await this.resizeChildren(parent); // Resize the children of the new split node
 
       console.debug("");
-      printBspTree(this.rootNode, "  ");
+      DwindleUtil.printLayout(this.rootNode, "  ");
     } catch {}
   }
 
@@ -158,7 +162,7 @@ export default class DwindleLayout extends BaseLayout {
       return;
     }
 
-    const node = findNodeFromWindowHandle(this.rootNode, oldWindow);
+    const node = this.findNodeFromWindowHandle(oldWindow, this.rootNode);
     if (!node) {
       console.debug(
         `No node found for window ${oldWindow.title} in workspace ${this.workspace}, monitor ${this.monitor}.`,
@@ -179,7 +183,7 @@ export default class DwindleLayout extends BaseLayout {
     }
 
     const parent = node.parent;
-    let remainingChild: BspNode;
+    let remainingChild: DwindleUtil.BspNode;
     if (parent.leftChild === node) {
       remainingChild = parent.rightChild;
     } else {
@@ -203,39 +207,33 @@ export default class DwindleLayout extends BaseLayout {
     }
     remainingChild.geometry = parent.geometry; // Update geometry to parent's geometry
 
-    try {
-      await this.resizeChildren(remainingChild); // Resize the children of the remaining node
+    await this.resizeChildren(remainingChild); // Resize the children of the remaining node
 
-      console.debug("");
-      printBspTree(this.rootNode, "  ");
-    } catch {}
+    console.debug("");
+    DwindleUtil.printLayout(this.rootNode, "  ");
   }
 
   // Resize the descendants of the node recursively
   // Assuming that the geometry of the node is already set correctly
-  async resizeChildren(node: BspNode): Promise<void> {
+  async resizeChildren(node: DwindleUtil.BspNode): Promise<void> {
     if (node.type === "window") {
-      try {
-        await resizeWindow(
-          node.windowHandle,
-          node.geometry,
-          this.workArea,
-          this.settings,
-        );
-        if (!this.rootNode) return;
-        const global = Shell.Global.get();
-        const [pointerX, pointerY] = global.get_pointer();
-        const pointedWindow = windowAtPointer(
-          this.rootNode,
-          pointerX,
-          pointerY,
-        );
-        if (!pointedWindow) return;
-        pointedWindow.windowHandle.focus(global.get_current_time());
-        return;
-      } catch {
-        return Promise.reject();
-      }
+      await resizeWindow(
+        node.windowHandle,
+        node.geometry,
+        this.workArea,
+        this.settings,
+      );
+      if (!this.rootNode) return;
+      const global = Shell.Global.get();
+      const [pointerX, pointerY] = global.get_pointer();
+      const pointedWindow = DwindleUtil.windowAtPointer(
+        this.rootNode,
+        pointerX,
+        pointerY,
+      );
+      if (!pointedWindow) return;
+      pointedWindow.windowHandle.focus(global.get_current_time());
+      return;
     }
 
     if (node.splitDirection === "vertical") {
@@ -281,7 +279,7 @@ export default class DwindleLayout extends BaseLayout {
       return;
     }
 
-    const node = findNodeFromWindowHandle(this.rootNode, window);
+    const node = this.findNodeFromWindowHandle(window, this.rootNode);
     if (!node) {
       console.debug(
         `No node found for window ${window.title} in workspace ${this.workspace}, monitor ${this.monitor}.`,
@@ -313,13 +311,18 @@ export default class DwindleLayout extends BaseLayout {
       this.settings.get_int("gaps-out"),
     );
 
-    adjustSplitRatio(node, node.parent, newGeometry, this.minSplitRatio);
+    DwindleUtil.adjustSplitRatio(
+      node,
+      node.parent,
+      newGeometry,
+      this.minSplitRatio,
+    );
 
     if (node.parent.parent?.type === "split") {
       if (node.parent.parent.splitDirection === node.parent.splitDirection) {
         await this.resizeChildren(node.parent);
       } else {
-        adjustSplitRatio(
+        DwindleUtil.adjustSplitRatio(
           node.parent,
           node.parent.parent,
           newGeometry,
@@ -332,7 +335,51 @@ export default class DwindleLayout extends BaseLayout {
     }
 
     console.debug("");
-    printBspTree(this.rootNode, "  ");
+    DwindleUtil.printLayout(this.rootNode, "  ");
     console.debug("");
+  }
+
+  /**
+   * Traverses the BSP tree to find a specific IWindowNode by its window handle.
+   * Performs a Depth-First Search (DFS).
+   * @param rootNode The root of the BSP tree (e.g., the workspace's root node).
+   * @param targetWindowHandle The window handle to search for.
+   * @returns The IWindowNode with the matching handle, or null if not found.
+   */
+  findNodeFromWindowHandle(
+    targetWindowHandle: Meta.Window,
+    rootNode: DwindleUtil.BspNode,
+  ): DwindleUtil.IWindowNode | null {
+    if (rootNode.type === "window") {
+      // If it's a window node, check if its handle matches
+      if (rootNode.windowHandle === targetWindowHandle) {
+        return rootNode;
+      }
+    } else {
+      // If it's a split node, recursively search in its children
+      const splitNode = rootNode as DwindleUtil.ISplitNode;
+      let foundNode: DwindleUtil.IWindowNode | null = null;
+
+      // Search in the left child
+      foundNode = this.findNodeFromWindowHandle(
+        targetWindowHandle,
+        splitNode.leftChild,
+      );
+      if (foundNode) {
+        return foundNode; // Found in left subtree
+      }
+
+      // If not found in left, search in the right child
+      foundNode = this.findNodeFromWindowHandle(
+        targetWindowHandle,
+        splitNode.rightChild,
+      );
+      if (foundNode) {
+        return foundNode; // Found in right subtree
+      }
+    }
+
+    // If no matching window handle was found in this subtree
+    return null;
   }
 }

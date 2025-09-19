@@ -3,8 +3,8 @@ import type Gio from "gi://Gio";
 import Meta from "gi://Meta";
 import Shell from "gi://Shell";
 import type { EasingParamsWithProperties } from "@girs/gnome-shell/extensions/global";
-import type { IGeometry } from "./bsp.js";
 import { easeActor } from "./easer.js";
+import type { IGeometry } from "./geometry.js";
 
 export async function resizeWindow(
   windowHandle: Meta.Window,
@@ -25,8 +25,7 @@ export async function resizeWindow(
   const actor: Meta.WindowActor | null = windowHandle.get_compositor_private();
 
   if (!animate || !actor) {
-    simpleResizeWindow(windowHandle, gappedNewGeometry);
-    return;
+    return simpleResizeWindow(windowHandle, gappedNewGeometry);
   }
 
   const actorMargin = {
@@ -55,12 +54,16 @@ export async function resizeWindow(
   };
 
   try {
+    console.debug("A");
     await easeActor(actor, easeParams);
+    console.debug("B");
     await simpleResizeWindow(windowHandle, gappedNewGeometry);
+    console.debug("C");
+  } catch (e) {
+    return Promise.reject(console.debug(e));
+  } finally {
     actor.set_scale(1, 1);
     actor.set_translation(0, 0, 0);
-  } catch {
-    return Promise.reject();
   }
 }
 

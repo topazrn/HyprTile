@@ -2,7 +2,7 @@ import type Gio from "gi://Gio";
 import Meta from "gi://Meta";
 import Shell from "gi://Shell";
 import { LayoutManager } from "./layout/manager.js";
-import type { IPoint } from "./util/bsp.js";
+import type { IPoint } from "./util/geometry.js";
 import { GarbageCollector } from "./util/gc.js";
 
 export default class HyprTile extends GarbageCollector {

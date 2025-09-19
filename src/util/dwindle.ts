@@ -1,33 +1,5 @@
 import type Meta from "gi://Meta";
-
-export interface IPoint {
-  x: number;
-  y: number;
-}
-
-/**
- * Represents the geometric properties of a window or a screen region.
- */
-export interface IGeometry extends IPoint {
-  width: number;
-  height: number;
-}
-
-/**
- * Determines if a given point (cursorX, cursorY) is within the bounds of a geometry.
- */
-export function isPointInGeometry(
-  x: number,
-  y: number,
-  geometry: IGeometry,
-): boolean {
-  return (
-    x >= geometry.x &&
-    x < geometry.x + geometry.width &&
-    y >= geometry.y &&
-    y < geometry.y + geometry.height
-  );
-}
+import { type IGeometry, isPointInGeometry } from "./geometry.js";
 
 /**
  * Defines the possible directions for a split in the binary tree.
@@ -118,75 +90,12 @@ export function createSplitNode(
 }
 
 /**
- * Traverses the BSP tree to find a specific IWindowNode by its window handle.
- * Performs a Depth-First Search (DFS).
- * @param rootNode The root of the BSP tree (e.g., the workspace's root node).
- * @param targetWindowHandle The window handle to search for.
- * @returns The IWindowNode with the matching handle, or null if not found.
- */
-export function findNodeFromWindowHandle(
-  rootNode: BspNode,
-  targetWindowHandle: Meta.Window,
-): IWindowNode | null {
-  if (rootNode.type === "window") {
-    // If it's a window node, check if its handle matches
-    if (rootNode.windowHandle === targetWindowHandle) {
-      return rootNode;
-    }
-  } else {
-    // If it's a split node, recursively search in its children
-    const splitNode = rootNode as ISplitNode;
-    let foundNode: IWindowNode | null = null;
-
-    // Search in the left child
-    foundNode = findNodeFromWindowHandle(
-      splitNode.leftChild,
-      targetWindowHandle,
-    );
-    if (foundNode) {
-      return foundNode; // Found in left subtree
-    }
-
-    // If not found in left, search in the right child
-    foundNode = findNodeFromWindowHandle(
-      splitNode.rightChild,
-      targetWindowHandle,
-    );
-    if (foundNode) {
-      return foundNode; // Found in right subtree
-    }
-  }
-
-  // If no matching window handle was found in this subtree
-  return null;
-}
-
-/**
- * Traverses the BSP tree to find a specific IWindowNode by its window handle.
- * Performs a Depth-First Search (DFS).
- * @param rootNode The root of the BSP tree (e.g., the workspace's root node).
- * @param targetWindowHandle The window handle to search for.
- * @returns The IWindowNode with the matching handle, or null if not found.
- */
-export function findWindowNodes(rootNode: BspNode): IWindowNode[] {
-  if (rootNode.type === "window") {
-    return [rootNode];
-  }
-
-  const splitNode = rootNode;
-  return [
-    ...findWindowNodes(splitNode.leftChild),
-    ...findWindowNodes(splitNode.rightChild),
-  ];
-}
-
-/**
  * Prints the structure of the BSP tree to the console, showing nodes and their relationships.
  * Performs a pre-order traversal.
  * @param node The current node to print.
  * @param indent The current indentation level (for visual hierarchy).
  */
-export function printBspTree(node: BspNode, indent: string = ""): void {
+export function printLayout(node: BspNode, indent: string = ""): void {
   if (!node) {
     return;
   }
@@ -200,8 +109,8 @@ export function printBspTree(node: BspNode, indent: string = ""): void {
     console.debug(
       `${indent}Split Node (Direction: ${splitNode.splitDirection}, Ratio: ${splitNode.splitRatio}) - Geo: (${node.geometry.x},${node.geometry.y},${node.geometry.width},${node.geometry.height})`,
     );
-    printBspTree(splitNode.leftChild, `${indent}  ├── `);
-    printBspTree(splitNode.rightChild, `${indent}  └── `);
+    printLayout(splitNode.leftChild, `${indent}  ├── `);
+    printLayout(splitNode.rightChild, `${indent}  └── `);
   }
 }
 

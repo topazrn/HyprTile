@@ -1,7 +1,7 @@
 import type Gio from "gi://Gio";
 import type Meta from "gi://Meta";
 import Shell from "gi://Shell";
-import { findNodeFromWindowHandle, type IPoint } from "../util/bsp.js";
+import type { IPoint } from "../util/geometry.js";
 import { getWorkArea, keyOf, windowFilter } from "../util/helpers.js";
 import type { BaseLayout } from "./base.js";
 import DwindleLayout from "./dwindle.js";
@@ -23,7 +23,12 @@ export class LayoutManager {
 
   resizeAll() {
     for (const [_key, wm] of this.instances) {
-      if (wm.rootNode) wm.resizeChildren(wm.rootNode);
+      if (!wm.rootNode) continue;
+      if (wm instanceof DwindleLayout) {
+        wm.resizeChildren(wm.rootNode);
+      } else {
+        wm.resizeChildren();
+      }
     }
   }
 
@@ -51,8 +56,18 @@ export class LayoutManager {
   async pop(window: Meta.Window): Promise<void> {
     for (const [_key, wm] of this.instances) {
       if (!wm.rootNode) continue;
-      if (!findNodeFromWindowHandle(wm.rootNode, window)) continue;
-      await wm.pop(window);
+      if (
+        wm instanceof DwindleLayout &&
+        !wm.findNodeFromWindowHandle(window, wm.rootNode)
+      ) {
+        continue;
+      }
+      if (wm instanceof MasterLayout && !wm.findNodeFromWindowHandle(window)) {
+        continue;
+      }
+      try {
+        await wm.pop(window);
+      } catch {}
       if (wm.rootNode) return;
       this.instances.delete(wm.key);
       return;

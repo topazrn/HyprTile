@@ -1,35 +1,36 @@
+import type Gio from "gi://Gio";
 import type Meta from "gi://Meta";
 import Shell from "gi://Shell";
-import {
-  adjustSplitRatio,
-  type BspNode,
-  createSplitNode,
-  createWindowNode,
-  findNodeFromWindowHandle,
-  type IGeometry,
-  type IPoint,
-  printBspTree,
-  windowAtPointer,
-} from "../util/bsp.js";
 import { abortEase } from "../util/easer.js";
+import type { IGeometry, IPoint } from "../util/geometry.js";
 import { removeGaps, resizeWindow } from "../util/helpers.js";
+import * as MasterUtil from "../util/master.js";
 import { BaseLayout } from "./base.js";
 
 export default class MasterLayout extends BaseLayout {
-  async push(newWindow: Meta.Window, point?: IPoint): Promise<void> {
-    if (!this.rootNode) {
-      const geometry = this.workArea;
-      this.rootNode = createWindowNode(newWindow, geometry, null);
-      try {
-        await this.resizeChildren(this.rootNode);
+  rootNode: MasterUtil.IRootNode | null;
 
-        console.debug("");
-        printBspTree(this.rootNode, "  ");
-      } catch {}
-      return;
+  constructor(key: string, settings: Gio.Settings) {
+    super(key, settings);
+    this.rootNode = null;
+    this.defaultSplitRatio = 0.6;
+  }
+
+  async push(newWindow: Meta.Window): Promise<void> {
+    if (!this.rootNode) {
+      this.rootNode = {
+        masterIndex: 0,
+        windows: [
+          {
+            windowHandle: newWindow,
+            splitRatio: 1,
+          },
+        ],
+      };
+      return this.resizeChildren();
     }
 
-    if (findNodeFromWindowHandle(this.rootNode, newWindow)) {
+    if (this.findNodeFromWindowHandle(newWindow)) {
       // This happens when GNOME Shell resumes after a suspend.
       // In this case, we should not push the window again.
       console.debug(
@@ -38,270 +39,82 @@ export default class MasterLayout extends BaseLayout {
       return;
     }
 
-    let targetX = 0;
-    let targetY = 0;
-    if (point) {
-      targetX = point.x;
-      targetY = point.y;
-    } else {
-      const rect = newWindow.get_frame_rect();
-      targetX = rect.x + rect.width / 2;
-      targetY = rect.y + rect.height / 2;
-    }
-    targetX = Math.clamp(
-      targetX,
-      this.workArea.x,
-      this.workArea.x + this.workArea.width - 1,
-    );
-    targetY = Math.clamp(
-      targetY,
-      this.workArea.y,
-      this.workArea.y + this.workArea.height - 1,
-    );
-
-    const node = windowAtPointer(this.rootNode, targetX, targetY);
-    console.debug(`Pointer at (${targetX}, ${targetY})`);
-    if (!node) return; // Already handled at the beginning of the function
-
-    const isHorizontal = node.geometry.width > node.geometry.height; // Determine split direction based on geometry aspect ratio
-    const splitDirection = isHorizontal ? "vertical" : "horizontal";
-    // right is right for vertical split, right is bottom for horizontal split
-    // left is left for vertical split, left is top for horizontal split
-    const hover = isHorizontal
-      ? targetX < node.geometry.x + node.geometry.width * this.defaultSplitRatio
-        ? "left"
-        : "right"
-      : targetY <
-          node.geometry.y + node.geometry.height * this.defaultSplitRatio
-        ? "left"
-        : "right";
-
-    const oldGeometry: IGeometry = {
-      x: node.geometry.x,
-      y: node.geometry.y,
-      width: node.geometry.width,
-      height: node.geometry.height,
+    const oldMaster = this.rootNode.windows[this.rootNode.masterIndex];
+    const newMaster: MasterUtil.IWindowNode = {
+      splitRatio: oldMaster.splitRatio,
+      windowHandle: newWindow,
     };
-    const newGeometry: IGeometry = {
-      x: node.geometry.x,
-      y: node.geometry.y,
-      width: node.geometry.width,
-      height: node.geometry.height,
-    };
+    this.rootNode.windows.push(newMaster);
+    this.rootNode.masterIndex = this.rootNode.windows.length - 1;
+    oldMaster.splitRatio = 1 / this.rootNode.masterIndex;
+    if (this.rootNode.windows.length === 2)
+      newMaster.splitRatio = this.defaultSplitRatio;
 
-    if (isHorizontal) {
-      newGeometry.width = newGeometry.width * this.defaultSplitRatio;
-      oldGeometry.width = oldGeometry.width - newGeometry.width;
-      if (hover === "left") {
-        oldGeometry.x = node.geometry.x + newGeometry.width;
-      } else {
-        newGeometry.x = node.geometry.x + oldGeometry.width;
-      }
-    } else {
-      newGeometry.height = newGeometry.height * this.defaultSplitRatio;
-      oldGeometry.height = oldGeometry.height - newGeometry.height;
-      if (hover === "left") {
-        oldGeometry.y = node.geometry.y + newGeometry.height;
-      } else {
-        newGeometry.y = node.geometry.y + oldGeometry.height;
-      }
-    }
-
-    const oldNode = createWindowNode(node.windowHandle, oldGeometry, null);
-    const newNode = createWindowNode(newWindow, newGeometry, null);
-    const parent = createSplitNode(
-      splitDirection,
-      this.defaultSplitRatio,
-      hover === "left" ? newNode : oldNode,
-      hover === "left" ? oldNode : newNode,
-      node.geometry,
-      null,
-    );
-    oldNode.parent = parent;
-    newNode.parent = parent;
-
-    if (!node.parent) {
-      // If the node has no parent, it becomes the new root
-      this.rootNode = parent;
-    } else {
-      if (node.parent.type === "window") {
-        console.debug(
-          `A window node don't have children, so idk how you can get this error.`,
-        );
-        return;
-      }
-
-      // Replace the node in its parent's children
-      const grandParent = node.parent;
-      if (grandParent.leftChild === node) {
-        grandParent.leftChild = parent;
-      } else {
-        grandParent.rightChild = parent;
-      }
-      parent.parent = grandParent;
-    }
-
-    try {
-      await this.resizeChildren(parent); // Resize the children of the new split node
-
-      console.debug("");
-      printBspTree(this.rootNode, "  ");
-    } catch {}
+    return this.resizeChildren();
   }
 
   async pop(oldWindow: Meta.Window): Promise<void> {
     const actor: Meta.WindowActor = oldWindow.get_compositor_private();
     await abortEase(actor);
+    if (!this.rootNode) throw new Error("rootNode is null.");
 
-    if (!this.rootNode) {
-      console.debug(`No root node exists for ${this.key}, cannot pop window.`);
-      return;
-    }
-
-    const node = findNodeFromWindowHandle(this.rootNode, oldWindow);
-    if (!node) {
-      console.debug(
-        `No node found for window ${oldWindow.title} in workspace ${this.workspace}, monitor ${this.monitor}.`,
-      );
-      return;
-    }
-
-    if (!node.parent) {
+    if (this.rootNode.windows.length === 1) {
       this.rootNode = null;
       return;
     }
 
-    if (node.parent.type === "window") {
-      console.debug(
-        `Cannot pop a window node that is a child of another window node.`,
-      );
-      return;
-    }
+    const node = this.findNodeFromWindowHandle(oldWindow);
+    if (!node) throw new Error("node is null.");
+    const nodeIndex = this.rootNode.windows.indexOf(node);
+    if (nodeIndex === -1) throw new Error("nodeIndex is -1.");
 
-    const parent = node.parent;
-    let remainingChild: BspNode;
-    if (parent.leftChild === node) {
-      remainingChild = parent.rightChild;
+    let removedSlaveNode: MasterUtil.IWindowNode;
+
+    if (nodeIndex === this.rootNode.masterIndex) {
+      removedSlaveNode = this.rootNode.windows.splice(
+        Math.abs(this.rootNode.masterIndex - 1),
+        1,
+      )[0];
+      node.windowHandle = removedSlaveNode.windowHandle;
+      this.rootNode.masterIndex = this.rootNode.windows.indexOf(node);
     } else {
-      remainingChild = parent.leftChild;
+      removedSlaveNode = this.rootNode.windows.splice(nodeIndex, 1)[0];
     }
 
-    const grandParent = parent.parent;
-    if (grandParent === null) {
-      // If the parent has no grandparent, we are at the root
-      remainingChild.parent = null;
-      this.rootNode = remainingChild;
-    } else {
-      // Replace the parent in its grandparent's children
-      if (grandParent.type === "window") return;
-      if (grandParent.leftChild === parent) {
-        grandParent.leftChild = remainingChild;
-      } else {
-        grandParent.rightChild = remainingChild;
-      }
-      remainingChild.parent = grandParent;
-    }
-    remainingChild.geometry = parent.geometry; // Update geometry to parent's geometry
-
-    try {
-      await this.resizeChildren(remainingChild); // Resize the children of the remaining node
-
-      console.debug("");
-      printBspTree(this.rootNode, "  ");
-    } catch {}
+    return this.resizeChildren();
   }
 
   // Resize the descendants of the node recursively
   // Assuming that the geometry of the node is already set correctly
-  async resizeChildren(node: BspNode): Promise<void> {
-    if (node.type === "window") {
-      try {
-        await resizeWindow(
-          node.windowHandle,
-          node.geometry,
-          this.workArea,
-          this.settings,
-        );
-        if (!this.rootNode) return;
-        const global = Shell.Global.get();
-        const [pointerX, pointerY] = global.get_pointer();
-        const pointedWindow = windowAtPointer(
-          this.rootNode,
-          pointerX,
-          pointerY,
-        );
-        if (!pointedWindow) return;
-        pointedWindow.windowHandle.focus(global.get_current_time());
-        return;
-      } catch {
-        return Promise.reject();
-      }
+  async resizeChildren(): Promise<void> {
+    if (!this.rootNode) throw new Error("rootNode is null.");
+    const geometries = this.getGeometries();
+    try {
+      await Promise.all(
+        this.rootNode.windows.map((node, index) =>
+          resizeWindow(
+            node.windowHandle,
+            geometries[index],
+            this.workArea,
+            this.settings,
+          ),
+        ),
+      );
+    } catch (e) {
+      console.debug(e);
     }
 
-    if (node.splitDirection === "vertical") {
-      node.leftChild.geometry = {
-        x: node.geometry.x,
-        y: node.geometry.y,
-        width: node.geometry.width * node.splitRatio,
-        height: node.geometry.height,
-      };
-      node.rightChild.geometry = {
-        x: node.geometry.x + node.leftChild.geometry.width,
-        y: node.geometry.y,
-        width: node.geometry.width - node.leftChild.geometry.width,
-        height: node.geometry.height,
-      };
-    } else {
-      node.leftChild.geometry = {
-        x: node.geometry.x,
-        y: node.geometry.y,
-        width: node.geometry.width,
-        height: node.geometry.height * node.splitRatio,
-      };
-      node.rightChild.geometry = {
-        x: node.geometry.x,
-        y: node.geometry.y + node.leftChild.geometry.height,
-        width: node.geometry.width,
-        height: node.geometry.height - node.leftChild.geometry.height,
-      };
-    }
-
-    // Resize both children too
-    await Promise.all([
-      this.resizeChildren(node.leftChild),
-      this.resizeChildren(node.rightChild),
-    ]);
+    console.debug("");
+    this.printLayout(geometries);
   }
 
   async resizeNeighbors(window: Meta.Window): Promise<void> {
-    if (!this.rootNode) {
-      console.debug(
-        `No root node exists for ${this.key}, cannot resize neighboring window.`,
-      );
-      return;
-    }
+    if (!this.rootNode) throw new Error("rootNode is null.");
 
-    const node = findNodeFromWindowHandle(this.rootNode, window);
+    const node = this.findNodeFromWindowHandle(window);
     if (!node) {
       console.debug(
         `No node found for window ${window.title} in workspace ${this.workspace}, monitor ${this.monitor}.`,
-      );
-      return;
-    }
-
-    if (node.type !== "window") {
-      console.debug(`Cannot resize neighbors of a non-window node.`);
-      return;
-    }
-
-    if (!node.parent) {
-      console.debug(`Cannot resize neighbors of a root node.`);
-      return;
-    }
-
-    if (node.parent.type === "window") {
-      console.debug(
-        `A window node don't have children, so idk how you can get this error.`,
       );
       return;
     }
@@ -313,26 +126,109 @@ export default class MasterLayout extends BaseLayout {
       this.settings.get_int("gaps-out"),
     );
 
-    adjustSplitRatio(node, node.parent, newGeometry, this.minSplitRatio);
+    MasterUtil.adjustSplitRatio(
+      this.rootNode,
+      node,
+      newGeometry,
+      this.workArea,
+      this.minSplitRatio,
+    );
 
-    if (node.parent.parent?.type === "split") {
-      if (node.parent.parent.splitDirection === node.parent.splitDirection) {
-        await this.resizeChildren(node.parent);
-      } else {
-        adjustSplitRatio(
-          node.parent,
-          node.parent.parent,
-          newGeometry,
-          this.minSplitRatio,
-        );
-        await this.resizeChildren(node.parent.parent);
+    await this.resizeChildren();
+  }
+
+  findNodeFromWindowHandle(
+    targetWindowHandle: Meta.Window,
+  ): MasterUtil.IWindowNode | null {
+    if (!this.rootNode) throw new Error("rootNode is null.");
+
+    return (
+      this.rootNode.windows.find(
+        (windows) => windows.windowHandle === targetWindowHandle,
+      ) ?? null
+    );
+  }
+
+  getGeometries(): IGeometry[] {
+    if (!this.rootNode) throw new Error("rootNode is null.");
+    if (this.rootNode.windows.length === 0) throw new Error("no windows.");
+    if (this.rootNode.windows.length === 1) return [this.workArea];
+
+    this.normalizeSlaveRatios();
+
+    const geometries: IGeometry[] = [];
+    const masterNode = this.rootNode.windows[this.rootNode.masterIndex];
+    const x = this.workArea.x + this.workArea.width * masterNode.splitRatio;
+    let slaveRatioSum = 0;
+
+    console.debug("Length: ", this.rootNode.windows.length);
+    for (let index = 0; index < this.rootNode.windows.length; index++) {
+      console.debug("Index: ", index);
+      const node = this.rootNode.windows[index];
+
+      if (index === this.rootNode.masterIndex) {
+        geometries.push({
+          x: this.workArea.x,
+          y: this.workArea.y,
+          width: this.workArea.width * node.splitRatio,
+          height: this.workArea.height,
+        });
+        continue;
       }
-    } else {
-      await this.resizeChildren(node.parent);
+
+      geometries.push({
+        x: x,
+        y: this.workArea.y + this.workArea.height * slaveRatioSum,
+        width: this.workArea.width - x,
+        height: this.workArea.height * node.splitRatio,
+      });
+
+      slaveRatioSum += node.splitRatio;
     }
 
-    console.debug("");
-    printBspTree(this.rootNode, "  ");
-    console.debug("");
+    return geometries;
+  }
+
+  normalizeSlaveRatios() {
+    if (!this.rootNode) throw new Error("rootNode is null.");
+
+    if (this.rootNode.windows.some((n) => n.splitRatio <= 0)) {
+      throw new Error("Input list must contain only positive numbers.");
+    }
+
+    const slaveSplitRatio = 1 / (this.rootNode.windows.length - 1);
+    for (let index = 0; index < this.rootNode.windows.length; index++) {
+      if (index === this.rootNode.masterIndex) continue;
+      const window = this.rootNode.windows[index];
+      window.splitRatio = slaveSplitRatio;
+    }
+  }
+  
+  printLayout(geometries: IGeometry[]): void {
+    if (!this.rootNode) throw new Error("rootNode is null.");
+
+    console.debug(
+      `Master Root (Ratio: ${this.rootNode.windows[this.rootNode.masterIndex].splitRatio})`,
+    );
+  
+    if (this.rootNode.windows.length === 0) return;
+  
+    const master = this.rootNode.windows[this.rootNode.masterIndex];
+    const masterGeometry = geometries[this.rootNode.masterIndex];
+    console.debug(
+      `  ${this.rootNode.windows.length > 1 ? "├──" : "└──"} Master Window: Title: ${master.windowHandle.title} ${master.windowHandle.get_pid()}) - Geo: (${masterGeometry.x},${masterGeometry.y},${masterGeometry.width},${masterGeometry.height})`,
+    );
+  
+    if (this.rootNode.windows.length === 1) return;
+  
+    console.debug(`  └── Slave Windows: `);
+    for (let index = 0; index < this.rootNode.windows.length - 1; index++) {
+      if (index == this.rootNode.masterIndex) continue;
+      const window = this.rootNode.windows[index];
+      const windowGeometry = geometries[index];
+      console.debug(
+        `    ${index === this.rootNode.windows.length - 1 ? "└──" : "├──"} Title: ${window.windowHandle.title} ${window.windowHandle.get_pid()}) - Ratio (${window.splitRatio}) - Geo: (${windowGeometry.x},${windowGeometry.y},${windowGeometry.width},${windowGeometry.height})`,
+      );
+    }
   }
 }
