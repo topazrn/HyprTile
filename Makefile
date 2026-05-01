@@ -1,5 +1,6 @@
 NAME=hyprtile
 DOMAIN=topazrn.com
+DEST_DIR=/Public
 
 .PHONY: all pack install clean
 
@@ -21,6 +22,9 @@ $(NAME).zip: dist/extension.js dist/prefs.js src/schemas/gschemas.compiled
 	@(cd dist && zip ../$(NAME).zip -9r .)
 
 pack: $(NAME).zip
+	@mkdir -p $(DEST_DIR)
+	mv $(NAME).zip $(DEST_DIR)/$(NAME).zip
+	@echo "Extension packed and moved to $(DEST_DIR)/$(NAME).zip"
 
 install: $(NAME).zip
 	@touch ~/.local/share/gnome-shell/extensions/$(NAME)@$(DOMAIN)
@@ -29,6 +33,3 @@ install: $(NAME).zip
 
 clean:
 	@rm -rf dist node_modules $(NAME).zip
-
-dev:
-	MUTTER_DEBUG_DUMMY_MODE_SPECS=1920x1080 G_MESSAGES_DEBUG="GNOME Shell" dbus-run-session -- gnome-shell --nested --wayland
