@@ -1,22 +1,17 @@
 import {
   Extension,
-  type ExtensionMetadata,
 } from "resource:///org/gnome/shell/extensions/extension.js";
 import HyprTile from "./app.js";
 
 export default class MyExtension extends Extension {
-  private app: HyprTile;
-
-  constructor(settings: ExtensionMetadata) {
-    super(settings);
-    this.app = new HyprTile(this.getSettings());
-  }
+  private app?: HyprTile;
 
   enable() {
+    this.app = new HyprTile(this.getSettings());
     this.app.start();
   }
 
   disable() {
-    this.app.release();
+    this.app?.release();
   }
 }

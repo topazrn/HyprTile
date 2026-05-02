@@ -3,5 +3,5 @@
   "description": "Tile GNOME windows the Hyprland way.",
   "uuid": "hyprtile@topazrn.com",
   "settings-schema": "org.gnome.shell.extensions.hyprtile",
-  "shell-version": ["48", "49", "50", "51"]
+  "shell-version": ["50", "51"]
 }

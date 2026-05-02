@@ -72,25 +72,25 @@ export default class GnomeRectanglePreferences extends ExtensionPreferences {
     if (this._settings) {
       this._settings.bind(
         "layout",
-        layoutToggle,
+        layoutToggle as any,
         "active-name",
         Gio.SettingsBindFlags.DEFAULT,
       );
       this._settings.bind(
         "animate",
-        animate,
+        animate as any,
         "active",
         Gio.SettingsBindFlags.DEFAULT,
       );
       this._settings.bind(
         "gaps-in",
-        gapsIn,
+        gapsIn as any,
         "value",
         Gio.SettingsBindFlags.DEFAULT,
       );
       this._settings.bind(
         "gaps-out",
-        gapsOut,
+        gapsOut as any,
         "value",
         Gio.SettingsBindFlags.DEFAULT,
       );
