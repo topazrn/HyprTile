@@ -3,7 +3,6 @@ import type Gio from "gi://Gio";
 import Meta from "gi://Meta";
 import Shell from "gi://Shell";
 import type { EasingParamsWithProperties } from "@girs/gnome-shell/extensions/global";
-import { easeActor } from "./easer.js";
 import type { IGeometry } from "./geometry.js";
 
 export async function resizeWindow(
@@ -21,47 +20,39 @@ export async function resizeWindow(
   );
 
   const gappedNewGeometry = addGaps(newGeometry, workArea, gapsIn, gapsOut);
-  const gappedOldGeometry: IGeometry = windowHandle.get_frame_rect();
   const actor: Meta.WindowActor | null = windowHandle.get_compositor_private();
 
   if (!animate || !actor) {
     return simpleResizeWindow(windowHandle, gappedNewGeometry);
   }
 
+  const gappedOldGeometry: IGeometry = windowHandle.get_frame_rect();
+
+  const top = gappedOldGeometry.x - actor.x;
+  const left = gappedOldGeometry.x - actor.x;
+  const right = actor.width - gappedOldGeometry.width - left;
+  const bottom = actor.height - gappedOldGeometry.height - top;
   const actorMargin = {
-    width: actor.width - gappedOldGeometry.width,
-    height: actor.height - gappedOldGeometry.height,
-  };
+    top,
+    left,
+    right,
+    bottom,
+  }
 
-  const scaleX = gappedNewGeometry.width / gappedOldGeometry.width;
-  const scaleY = gappedNewGeometry.height / gappedOldGeometry.height;
-  const translationX =
-    gappedNewGeometry.x -
-    gappedOldGeometry.x +
-    (1 - scaleX) * actorMargin.width;
-  const translationY =
-    gappedNewGeometry.y -
-    gappedOldGeometry.y +
-    (1 - scaleY) * actorMargin.height;
-
+  const scaleX = (gappedNewGeometry.width) / (gappedOldGeometry.width);
+  const scaleY = (gappedNewGeometry.height) / (gappedOldGeometry.height);
   const easeParams: EasingParamsWithProperties = {
+    x: gappedNewGeometry.x - (scaleX * actorMargin.left),
+    y: gappedNewGeometry.y - (scaleY * actorMargin.top),
     scaleX,
     scaleY,
-    translationX,
-    translationY,
     mode: Clutter.AnimationMode.EASE_IN_OUT_EXPO,
     duration: 700,
   };
 
   await actor.easeAsync(easeParams);
-    await simpleResizeWindow(windowHandle, gappedNewGeometry);
-    console.debug("C");
-  } catch (e) {
-    return Promise.reject(console.debug(e));
-  } finally {
-    actor.set_scale(1, 1);
-    actor.set_translation(0, 0, 0);
-  }
+  await simpleResizeWindow(windowHandle, gappedNewGeometry);
+  actor.set_scale(1, 1);
 }
 
 export async function simpleResizeWindow(
@@ -71,15 +62,8 @@ export async function simpleResizeWindow(
   if (!windowHandle || !windowHandle.get_workspace()) return;
   if (windowHandle.fullscreen) {
     windowHandle.unmake_fullscreen();
-  } else if (
-    windowHandle.maximizedHorizontally &&
-    windowHandle.maximizedVertically
-  ) {
-    windowHandle.unmaximize(Meta.MaximizeFlags.BOTH);
-  } else if (windowHandle.maximizedHorizontally) {
-    windowHandle.unmaximize(Meta.MaximizeFlags.HORIZONTAL);
-  } else if (windowHandle.maximizedVertically) {
-    windowHandle.unmaximize(Meta.MaximizeFlags.VERTICAL);
+  } else {
+    windowHandle.unmaximize();
   }
 
   const geometry = windowHandle.get_frame_rect();
