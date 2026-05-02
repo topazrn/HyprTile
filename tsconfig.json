@@ -1,5 +1,6 @@
 {
   "compilerOptions": {
+    "types": ["bun"],
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "rootDir": "./src",
