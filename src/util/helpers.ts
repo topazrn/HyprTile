@@ -53,10 +53,7 @@ export async function resizeWindow(
     duration: 700,
   };
 
-  try {
-    console.debug("A");
-    await easeActor(actor, easeParams);
-    console.debug("B");
+  await actor.easeAsync(easeParams);
     await simpleResizeWindow(windowHandle, gappedNewGeometry);
     console.debug("C");
   } catch (e) {

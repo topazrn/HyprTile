@@ -2,7 +2,6 @@ import type Gio from "gi://Gio";
 import type Meta from "gi://Meta";
 import Shell from "gi://Shell";
 import * as DwindleUtil from "../util/dwindle.js";
-import { abortEase } from "../util/easer.js";
 import type { IGeometry, IPoint } from "../util/geometry.js";
 import { removeGaps, resizeWindow } from "../util/helpers.js";
 import { BaseLayout } from "./base.js";
@@ -154,9 +153,6 @@ export default class DwindleLayout extends BaseLayout {
   }
 
   async pop(oldWindow: Meta.Window): Promise<void> {
-    const actor: Meta.WindowActor = oldWindow.get_compositor_private();
-    await abortEase(actor);
-
     if (!this.rootNode) {
       console.debug(`No root node exists for ${this.key}, cannot pop window.`);
       return;

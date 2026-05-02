@@ -1,7 +1,5 @@
 import type Gio from "gi://Gio";
 import type Meta from "gi://Meta";
-import Shell from "gi://Shell";
-import { abortEase } from "../util/easer.js";
 import type { IGeometry, IPoint } from "../util/geometry.js";
 import { removeGaps, resizeWindow } from "../util/helpers.js";
 import * as MasterUtil from "../util/master.js";
@@ -54,8 +52,6 @@ export default class MasterLayout extends BaseLayout {
   }
 
   async pop(oldWindow: Meta.Window): Promise<void> {
-    const actor: Meta.WindowActor = oldWindow.get_compositor_private();
-    await abortEase(actor);
     if (!this.rootNode) throw new Error("rootNode is null.");
 
     if (this.rootNode.windows.length === 1) {
