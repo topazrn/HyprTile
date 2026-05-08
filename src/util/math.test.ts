@@ -190,6 +190,7 @@ const moveResize = (window: Geometry, actor: Geometry, target: Geometry): void =
 
 
 describe("move resize", () => {
+    // Animate resize actor to position B.
     const window: Geometry = {
         x: 0,
         y: 0,
@@ -219,6 +220,7 @@ describe("move resize", () => {
 })
 
 describe("move resize scene 2", () => {
+    // Animate resize actor to position B.
     const window: Geometry = {
         x: 930,
         y: 290,
@@ -244,5 +246,51 @@ describe("move resize scene 2", () => {
     });
     test("height", () => {
         expect(window.height).toBe(target.height);
+    });
+})
+
+describe("move resize scene 3", () => {
+    // Move resize window to position B,
+    // Move resize actor to position A,
+    // Animate resize actor to position B.
+    const window: Geometry = {
+        x: 930,
+        y: 290,
+        width: 1000,
+        height: 800,
+    }
+    const posA: Geometry = {
+        x: 930,
+        y: 290,
+        width: 1000,
+        height: 800,
+    }
+    const posB: Geometry = {
+        x: 0,
+        y: 0,
+        width: 400,
+        height: 400,
+    }
+
+    window.x = posB.x;
+    window.y = posB.y;
+    window.width = posB.width;
+    window.height = posB.height;
+    
+    const actor = windowActor(window);
+
+    moveResize(window, actor, posA);
+    moveResize(window, actor, posB);
+    test("x", () => {
+        expect(window.x).toBe(posB.x);
+    });
+    test("y", () => {
+        expect(window.y).toBe(posB.y);
+    });
+    test("width", () => {
+        expect(window.width).toBe(posB.width);
+    });
+    test("height", () => {
+        expect(window.height).toBe(posB.height);
     });
 })

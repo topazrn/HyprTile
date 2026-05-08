@@ -19,40 +19,44 @@ export async function resizeWindow(
     `Resize window called on ${windowHandle.title} (${windowHandle.get_pid()})`,
   );
 
+  const gappedOldGeometry: IGeometry = windowHandle.get_frame_rect();
   const gappedNewGeometry = addGaps(newGeometry, workArea, gapsIn, gapsOut);
+
   const actor: Meta.WindowActor | null = windowHandle.get_compositor_private();
 
-  if (!animate || !actor) {
-    return simpleResizeWindow(windowHandle, gappedNewGeometry);
-  }
+  if (!animate || !actor) return simpleResizeWindow(windowHandle, gappedNewGeometry);
 
-  const gappedOldGeometry: IGeometry = windowHandle.get_frame_rect();
-
-  const top = gappedOldGeometry.x - actor.x;
+  const top = gappedOldGeometry.y - actor.y;
   const left = gappedOldGeometry.x - actor.x;
   const right = actor.width - gappedOldGeometry.width - left;
   const bottom = actor.height - gappedOldGeometry.height - top;
   const actorMargin = {
-    top,
-    left,
-    right,
-    bottom,
+    top: top,
+    left: left,
+    right: right,
+    bottom: bottom,
   }
 
-  const scaleX = (gappedNewGeometry.width) / (gappedOldGeometry.width);
-  const scaleY = (gappedNewGeometry.height) / (gappedOldGeometry.height);
+  await simpleResizeWindow(windowHandle, gappedNewGeometry);
+
+  const scaleX = (gappedOldGeometry.width) / (gappedNewGeometry.width);
+  const scaleY = (gappedOldGeometry.height) / (gappedNewGeometry.height);
+  actor.set_scale(scaleX, scaleY);
+
+  const x = gappedOldGeometry.x - (scaleX * actorMargin.left);
+  const y = gappedOldGeometry.y - (scaleY * actorMargin.top);
+  actor.set_position(x, y);
+
   const easeParams: EasingParamsWithProperties = {
-    x: gappedNewGeometry.x - (scaleX * actorMargin.left),
-    y: gappedNewGeometry.y - (scaleY * actorMargin.top),
-    scaleX,
-    scaleY,
+    x: gappedNewGeometry.x - actorMargin.left,
+    y: gappedNewGeometry.y - actorMargin.top,
+    scaleX: 1,
+    scaleY: 1,
     mode: Clutter.AnimationMode.EASE_IN_OUT_EXPO,
     duration: 700,
   };
 
   await actor.easeAsync(easeParams);
-  await simpleResizeWindow(windowHandle, gappedNewGeometry);
-  actor.set_scale(1, 1);
 }
 
 export async function simpleResizeWindow(
