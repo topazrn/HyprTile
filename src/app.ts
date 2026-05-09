@@ -112,17 +112,20 @@ export default class HyprTile extends GarbageCollector {
           operation === Meta.GrabOp.KEYBOARD_RESIZING_SE ||
           operation === Meta.GrabOp.KEYBOARD_RESIZING_W
         ) {
-          this.layoutManager.resizeNeighbors(window);
-
           const sizeChanged = window.connect_after("size-changed", () => {
             // Only triggers if the user does the resize operation quickly
             window.disconnect(sizeChanged);
-            this.layoutManager.resizeNeighbors(window);
+            clearTimeout(timeout);
+
+            setTimeout(() => {
+              this.layoutManager.resizeNeighbors(window);
+            }, 100);
           });
 
-          setTimeout(() => {
+          const timeout = setTimeout(() => {
             // In case the user does the resize operation carefully
             window.disconnect(sizeChanged);
+            this.layoutManager.resizeNeighbors(window);
           }, 100);
         }
       },
